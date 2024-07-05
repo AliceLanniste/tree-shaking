@@ -1,0 +1,1 @@
+用来实现web bundler的tree-shaking
