@@ -10,10 +10,10 @@ function parseEntry(entry,modules) {
 }
 
 function collectedUsedModule(modules)  {
-    
+
 }
 
-function  bundle(entry) {
+export  default function  bundle(entry) {
     let modules = {}
     parseEntry(entry,modules)
 
