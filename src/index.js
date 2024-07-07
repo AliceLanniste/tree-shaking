@@ -6,7 +6,20 @@ import escodegen from "escodegen";
 
 
 function parseEntry(entry,modules) {
+  let content = fs.readFileSync(entry,'utf-8')
+  let ast =esprima.parseModule(content)
 
+  estraverse.traverse(ast,{
+    enter(node) {
+        if (node.type === 'ImportDeclaration') {
+            const importPath = path.resolve(path.dirname(filePath),node.source.value+'.js')
+            if(!modules[importPath]) {
+                parseEntry(importPath,modules)
+            }
+        }
+    }
+  })
+  modules[filePath] = {content, ast}
 }
 
 function collectedUsedModule(modules)  {
