@@ -2,5 +2,4 @@
 
 tree-shaking移除目标：
 1. 移除无用类
-2. 无用变量、函数移除
-3. 对sideEffect进行处理
+2. 无用变量、函数移除3. 对sideEffect进行处理
