@@ -1,4 +1,4 @@
-type inputOption = { [entryAlias: string]: string }
+type inputOption =Record<string,string>;
 
 export interface InputOptions {
     input?: inputOption;
@@ -9,6 +9,6 @@ export interface OutputOptions {
 }
 
 
-export class rainbowOptions implements InputOptions {
-
+export interface rainbowOptions extends InputOptions {
+    output?: OutputOptions;
 }
