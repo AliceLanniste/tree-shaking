@@ -7,8 +7,6 @@ export interface InputOptions {
 export interface OutputOptions {
 
 }
-
-
 export interface rainbowOptions extends InputOptions {
     output?: OutputOptions;
 }

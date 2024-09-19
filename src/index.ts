@@ -1,10 +1,9 @@
 
-import { type rainbowOptions } from "./options";
-import Bundler from "./bundler";
+import { type rainbowOptions } from "./types/options";
+import { Graph } from "./Graph";
 export function rainbowUp(options: rainbowOptions) {
-      
-      let bundler = new Bundler(options);
-      let buildOuput = bundler.build();
-      let output = bundler.generate();
-
+      // create a dependencies graph
+      let graph = new Graph(options);
+      graph.createModuleGraph()
+     
 }

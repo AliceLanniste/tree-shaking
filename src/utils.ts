@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
-import { rainbowOptions } from './options';
+import { rainbowOptions } from './types/options';
+import { UnresolvedModule } from './types/modules';
 
 export function normalizeOptions(options: rainbowOptions) {
     let resolvePath: string[] = [];
@@ -9,7 +10,7 @@ export function normalizeOptions(options: rainbowOptions) {
     return resolvePath;
 }
 
-export function normalizeModule(entryPoints: Record<string,string>) {
+export function normalizeModules(entryPoints: Record<string,string>):UnresolvedModule[] {
 
     return Object.entries(entryPoints).map(([name, id]) => ({
 		fileName: null,
