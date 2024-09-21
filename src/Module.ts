@@ -1,7 +1,14 @@
+import { Graph } from "./Graph";
+import { rainbowOptions } from "./types";
+
 export class Module {
-    private code;
-    private path;
-    constructor(code,path) {
+    constructor(
+        private readonly graph: Graph,
+		public readonly id: string,
+		private readonly options: rainbowOptions,
+		isEntry: boolean,
+		syntheticNamedExports: boolean | string,
+		attributes: Record<string, string>) {
 
     }
 }
