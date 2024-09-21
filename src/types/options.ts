@@ -1,4 +1,5 @@
 import { resolve } from "path";
+import { normalizeModules } from '../utils';
 
 type inputOption =Record<string,string>;
 
@@ -15,6 +16,7 @@ export interface rainbowOptions extends InputOptions {
 
 
 export type NomlaizedResolveIdWithoutDefaults = {
+    external?: boolean | 'absolute';
     id: string;
     resolveB?: string;
     attributes?: Record<string, string>;
@@ -34,3 +36,6 @@ export interface ResolvedId extends ModuleOptions {
 	id: string;
 	resolvedBy: string;
 }
+
+export type ResolveResult = string | null;
+

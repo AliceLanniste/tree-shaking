@@ -1,7 +1,10 @@
 import { dirname, resolve } from 'node:path';
-import { rainbowOptions } from './types/options';
+import { rainbowOptions, ResolveResult } from './types/options';
 import { UnresolvedModule } from './types/modules';
 import { isAbsolute } from './utils/path';
+
+export const BLANK: Record<string, unknown> = Object.freeze(Object.create(null));
+export const EMPTY_OBJECT = Object.freeze({});
 
 export function normalizeOptions(options: rainbowOptions) {
     let resolvePath: string[] = [];
@@ -23,8 +26,9 @@ export function normalizeModules(entryPoints: Record<string,string>):UnresolvedM
 }
 
 export function resolveId(unresolveId: string,	importer: string | undefined,
-) {
+): ResolveResult {
     //skip external module
     if(importer !== undefined && !isAbsolute(unresolveId) && unresolveId[0] !== '.') return null;
     return importer ? resolve(dirname(importer), unresolveId) : resolve(unresolveId)
 }
+
