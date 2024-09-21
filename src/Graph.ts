@@ -9,7 +9,7 @@ export class Graph {
     constructor(
         private readonly options: rainbowOptions,
     ) {
-        this.moduleLoader = new ModuleLoader(this.modulesById,options);        
+        this.moduleLoader = new ModuleLoader(this,this.modulesById,options);        
 
     } 
 
