@@ -2,6 +2,7 @@ import { dirname, resolve } from 'node:path';
 import { rainbowOptions, ResolveResult } from './types/options';
 import { UnresolvedModule } from './types/modules';
 import { isAbsolute } from './utils/path';
+import { readFileSync } from 'fs';
 
 export const BLANK: Record<string, unknown> = Object.freeze(Object.create(null));
 export const EMPTY_OBJECT = Object.freeze({});
@@ -32,3 +33,12 @@ export function resolveId(unresolveId: string,	importer: string | undefined,
     return importer ? resolve(dirname(importer), unresolveId) : resolve(unresolveId)
 }
 
+//js,cjs,mjs
+function addJSExtension(importer: string, importee:string) {
+    
+}
+
+
+export function load ( id ) {
+	return readFileSync( id, 'utf-8' );
+}
