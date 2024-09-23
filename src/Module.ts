@@ -2,6 +2,10 @@ import { Graph } from "./Graph";
 import { rainbowOptions } from "./types";
 
 export class Module {
+
+
+	imports: Record<string,unknown>;
+	exports: Record<string,unknown>;
     constructor(
         private readonly graph: Graph,
 		public readonly id: string,
@@ -11,4 +15,16 @@ export class Module {
 		attributes: Record<string, string>) {
 
     }
+
+	setSource() {
+
+	}
+
+	addImport() {
+
+	}
+
+	addExport() {
+
+	}
 }
