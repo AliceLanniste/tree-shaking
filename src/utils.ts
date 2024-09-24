@@ -1,11 +1,9 @@
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { rainbowOptions, ResolveResult } from './types/options';
 import { UnresolvedModule } from './types/modules';
 import { isAbsolute } from './utils/path';
-import { readFileSync } from 'fs';
+import { readdir, readFile } from 'fs/promises';
 
-export const BLANK: Record<string, unknown> = Object.freeze(Object.create(null));
-export const EMPTY_OBJECT = Object.freeze({});
 
 export function normalizeOptions(options: rainbowOptions) {
     let resolvePath: string[] = [];
@@ -26,19 +24,30 @@ export function normalizeModules(entryPoints: Record<string,string>):UnresolvedM
 
 }
 
-export function resolveId(unresolveId: string,	importer: string | undefined,
-): ResolveResult {
+export async function resolveId(unresolveId: string,	importer: string | undefined,
+): Promise<ResolveResult> {
     //skip external module
     if(importer !== undefined && !isAbsolute(unresolveId) && unresolveId[0] !== '.') return null;
-    return importer ? resolve(dirname(importer), unresolveId) : resolve(unresolveId)
+    return await addJSExtension( importer ? resolve(dirname(importer), unresolveId) : resolve(unresolveId)
+    )
 }
 
 //js,cjs,mjs
-function addJSExtension(importer: string, importee:string) {
-    
+async function addJSExtension(filename: string) {
+    return (await findFile(filename) ??
+            await findFile(filename + '.js') ??
+            await findFile(filename) +'.mjs')
 }
 
 
-export function load ( id ) {
-	return readFileSync( id, 'utf-8' );
+async function  findFile(filename: string) {
+     const name = basename(filename);
+     const files = await readdir(dirname(filename));
+     if (files.includes(name)) {
+        return filename
+     }
+}
+
+export async function load ( id: string ) {
+	return await readFile( id, 'utf-8' );
 }
