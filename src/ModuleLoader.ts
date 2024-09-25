@@ -1,7 +1,7 @@
-import { NomlaizedResolveIdWithoutDefaults, ResolvedId, type rainbowOptions } from "./types/options";
+import { NomlaizedResolveIdWithoutDefaults, ResolvedId, ResolveResult, type rainbowOptions } from "./types/options";
 import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
-import { EMPTY_OBJECT, resolveId } from "./utils";
+import { resolveId } from "./utils";
 import { Graph } from "./Graph";
 export class ModuleLoader {
     
@@ -16,6 +16,9 @@ export class ModuleLoader {
     async addEntryModule(unresolveModules:UnresolvedModule[], isUserDefined: boolean) {
         const newEntryModules = await Promise.all(unresolveModules.map(({id, importer}) => 
                                this.loadEntryModule(id,true,importer)))
+        if (newEntryModules.length === 0) {
+			throw new Error('You must supply options.input to rollup');
+		}
     }
 
 	private async loadEntryModule(
@@ -23,36 +26,35 @@ export class ModuleLoader {
 		isEntry: boolean,
 		importer: string | undefined,
 	): Promise<Module> {
-      const resolveResult = resolveId(unresolvedId,importer)
+      const resolveResult = await resolveId(unresolvedId,importer)
         if (resolveResult === null) {
         //    return;
         }
 
         return this.fetchModule(
-           this.getResolveIdWithResult({id: resolveResult!}, EMPTY_OBJECT)!,
-               undefined,
-               isEntry,
+         resolveResult,
+         undefined
         )
 
     }
   
-    private async fetchModule({ attributes, id, syntheticNamedExports }: ResolvedId,
+    private async fetchModule(id: ResolveResult,
 		importer: string | undefined,
-		isEntry: boolean):Promise<Module> {
-         const existingModule = this.modulesById.get(id);
+		):Promise<Module> {
+         const existingModule = this.modulesById.get(id as string);
          if(existingModule) {
             return existingModule;
          }
-		const module = new Module(
-			this.graph,
-			id,
-			this.options,
-			isEntry,
-			syntheticNamedExports,
-			attributes
-		);
-		this.modulesById.set(id, module);
-        return module;
+		// const module = new Module(
+		// 	this.graph,
+		// 	id,
+		// 	this.options,
+		// 	isEntry,
+		// 	syntheticNamedExports,
+		// 	attributes
+		// );
+		// this.modulesById.set(id, module);
+        // return module;
     }
 
     private getResolveIdWithResult(resolvedId: NomlaizedResolveIdWithoutDefaults | null, 
