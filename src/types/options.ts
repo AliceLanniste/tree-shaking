@@ -1,5 +1,5 @@
 import { resolve } from "path";
-import { normalizeModules } from '../utils';
+import { normalizeModules } from '../utils/utils';
 
 type inputOption =Record<string,string>;
 

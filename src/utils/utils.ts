@@ -1,9 +1,14 @@
-import { basename, dirname, resolve } from 'node:path';
-import { rainbowOptions, ResolveResult } from './types/options';
-import { UnresolvedModule } from './types/modules';
-import { isAbsolute } from './utils/path';
+import { basename, dirname, relative, resolve } from 'node:path';
+import { rainbowOptions, ResolveResult } from '../types/options';
+import { UnresolvedModule } from '../types/modules';
+
 import { readdir, readFile } from 'fs/promises';
 
+const ABSOLUTE_PATH_REGEX = /^(?:\/|(?:[A-Za-z]:)?[/\\|])/;
+
+export function isAbsolute(path: string): boolean {
+	return ABSOLUTE_PATH_REGEX.test(path);
+}
 
 export function normalizeOptions(options: rainbowOptions) {
     let resolvePath: string[] = [];
@@ -48,6 +53,21 @@ async function  findFile(filename: string) {
      }
 }
 
+//load module source
 export async function load ( id: string ) {
 	return await readFile( id, 'utf-8' );
+}
+
+
+export  function relativeId(id: string): string {
+	if (!isAbsolute(id)) return id;
+	return relative(resolve(), id);
+}
+
+//transform source to transform OAject
+export function transform(source: string):{code:string, ast: string | null} {
+    return {
+        code: source,
+        ast: null
+    }
 }

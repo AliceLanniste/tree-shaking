@@ -1,7 +1,7 @@
 import { Module } from "./Module";
 import { ModuleLoader } from "./ModuleLoader";
 import { type rainbowOptions } from "./types";
-import { normalizeModules } from "./utils";
+import { normalizeModules } from "./utils/utils";
 
 export class Graph {
     readonly moduleLoader:ModuleLoader;

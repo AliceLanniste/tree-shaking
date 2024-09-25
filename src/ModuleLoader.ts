@@ -1,7 +1,7 @@
 import { NomlaizedResolveIdWithoutDefaults, ResolvedId, ResolveResult, type rainbowOptions } from "./types/options";
 import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
-import relativeId, { load, resolveId } from "./utils";
+import {relativeId, load, resolveId } from "./utils/utils";
 import { Graph } from "./Graph";
 import { error } from "console";
 import { ErrCode } from "./error";
@@ -75,6 +75,7 @@ export class ModuleLoader {
                 message: message
             }) 
         }
+        
 
     }
 
