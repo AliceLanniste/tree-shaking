@@ -1,8 +1,10 @@
 import { NomlaizedResolveIdWithoutDefaults, ResolvedId, ResolveResult, type rainbowOptions } from "./types/options";
 import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
-import { resolveId } from "./utils";
+import relativeId, { load, resolveId } from "./utils";
 import { Graph } from "./Graph";
+import { error } from "console";
+import { ErrCode } from "./error";
 export class ModuleLoader {
     
      constructor(
@@ -28,33 +30,52 @@ export class ModuleLoader {
 	): Promise<Module> {
       const resolveResult = await resolveId(unresolvedId,importer)
         if (resolveResult === null) {
-        //    return;
+             error()
         }
 
         return this.fetchModule(
-         resolveResult,
-         undefined
-        )
+                resolveResult,
+                undefined,
+                true
+                )
 
     }
   
     private async fetchModule(id: ResolveResult,
 		importer: string | undefined,
+        isEntry: boolean =false
 		):Promise<Module> {
-         const existingModule = this.modulesById.get(id as string);
+        id = id as string;
+         const existingModule = this.modulesById.get(id);
          if(existingModule) {
             return existingModule;
          }
-		// const module = new Module(
-		// 	this.graph,
-		// 	id,
-		// 	this.options,
-		// 	isEntry,
-		// 	syntheticNamedExports,
-		// 	attributes
-		// );
-		// this.modulesById.set(id, module);
-        // return module;
+		const module = new Module(
+			this.graph,
+			id,
+			this.options,
+			isEntry,
+		
+		);
+		this.modulesById.set(id, module);
+        const loadModulePromise = this.loadModuleSource(id,importer)
+        return module;
+    }
+
+    private async loadModuleSource(id: string, importer: string|undefined) {
+        let source: string;
+        try {
+            source = await load(id);
+
+        } catch (_error:unknown) {
+            let message = `Could not load ${id}`;
+			if (importer) message += ` (imported by ${relativeId(importer)})`; 
+            error({
+                code:ErrCode.LODE_MODULE,
+                message: message
+            }) 
+        }
+
     }
 
     private getResolveIdWithResult(resolvedId: NomlaizedResolveIdWithoutDefaults | null, 
