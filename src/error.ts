@@ -25,5 +25,6 @@ export function error( errObj: ErrorType):never {
  */
 
 export enum ErrCode {
-    LODE_MODULE="LODE_MODULE"
+    LODE_MODULE="LODE MODULE",
+    PARSE_ERROR ="PARSE ERROR"
 }
