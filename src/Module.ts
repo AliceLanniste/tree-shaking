@@ -40,14 +40,18 @@ export class Module {
 		}
 	 }
 	 let statements:Statement[] = [];
-     ast.body.forEach(node =>{
-		 if(node.type === 'EmptyStatement') return
+	 statements = ast.body.map( ( node, i ) => {
+		return new Statement( node, this, i );
+	});
 
-		 
-	 })
 
 	 return statements;
 	}	
+
+	analyse() {
+		if(!this.statements) return;
+         this.statements.forEach(statement => null); 
+	}
 
 	addImport() {
 
