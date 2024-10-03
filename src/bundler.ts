@@ -1,5 +1,5 @@
 import { rainbowOptions } from "./types/options";
-import { normalizeOptions } from "./utils";
+import { normalizeOptions } from "./utils/utils";
 import { Module } from "./Module";
 export default class Bundler {
     options: rainbowOptions;
