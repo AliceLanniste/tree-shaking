@@ -10,7 +10,7 @@ export class Module {
     private statements:Statement[] | null = null;
 	private comments:Comment[] =[];
 	private magicString:MagicString;
-	imports: Record<string,unknown>;
+	imports: Record<string,unknown> = {};
 	exports: Record<string,unknown>;
 
     constructor(
@@ -63,7 +63,8 @@ export class Module {
 
 	addImport(statement: Statement) {
 		const node = statement.node as ImportDeclaration;
-		// detect type of importDeclaration:ImportDefaultSpecifer,ImportSpecifer,ImportNamespaceSpecifer
+		const importee = node.source.value;
+		// check type of importDeclaration:ImportDefaultSpecifer,ImportSpecifer,ImportNamespaceSpecifer
 		node.specifiers.forEach(specifer => {
 			const isDefault = specifer.type == "ImportDefaultSpecifier";
 			const isNamespace = specifer.type == "ImportNamespaceSpecifier";
@@ -71,9 +72,19 @@ export class Module {
 			const localName = specifer.local.name;
 			const name = isDefault ? 'Default': isNamespace ? '*' : (specifer.imported as Identifier).name;
 			
-			// detect this.imports duplicated localname
-
-			// push this.imports
+			// check this.imports duplicated localname
+				if (this.imports.hasOwnProperty(localName)) {
+					return error({
+						code:ErrCode.DUPLCATE_ERROR,
+						message:  `Duplicated import '${localName}'`
+					}) 
+				}
+		
+			this.imports[localName] = {
+				importee,
+				name,
+				localName,
+			}
 		})
 	}
 
