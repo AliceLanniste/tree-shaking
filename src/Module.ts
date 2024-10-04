@@ -1,7 +1,7 @@
 import { Graph } from "./Graph";
 import { Statement } from './node/Statement';
 import { rainbowOptions } from "./types";
-import { Identifier, ImportDeclaration, parse, Program } from "acorn";
+import { ExportDefaultDeclaration, ExportNamedDeclaration, FunctionDeclaration, Identifier, ImportDeclaration, parse, Program } from "acorn";
 import { Comment } from "./node/Comment";
 import { ErrCode, error } from "./error";
 import MagicString from "magic-string";
@@ -88,7 +88,61 @@ export class Module {
 		})
 	}
 
-	addExport(Statement: Statement) {
+	addExport(statement: Statement) {
+		const exportDecl = statement.node as any;
+		const source = exportDecl.source && exportDecl.source.value;
+		const exportDefaultDecl = exportDecl as ExportDefaultDeclaration;
+		const exportNameDecl = exportDecl as ExportNamedDeclaration;
+
+		if (exportDefaultDecl.type == 'ExportDefaultDeclaration') {
+			const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
+
+			 this.exports['default'] = {
+				statement,
+				name:'default',
+				localName: isDeclaration ? (exportDefaultDecl.declaration as FunctionDeclaration).id.name :'default',
+				isDeclaration,
+			 }
+		} else if(exportNameDecl.type == 'ExportNamedDeclaration') {
+				if (exportNameDecl.specifiers.length) {
+					exportNameDecl.specifiers.forEach(specifier => {
+						const localName = (specifier.local as Identifier).name;
+						const exportedName = (specifier.exported as Identifier).name;
+
+						this.exports[ exportedName ] = {
+							localName,
+							exportedName
+						};
+
+						// export { foo } from './foo';
+						if ( source ) {
+							this.imports[ localName ] = {
+								source,
+								localName,
+								name: localName
+							};
+						}
+					})
+				} else {
+					let declaration = exportDecl.declaration;
+
+					let name:string;
+
+					if ( declaration.type === 'VariableDeclaration' ) {
+						// export var foo = 42
+						name = declaration.declarations[0].id.name;
+					} else {
+						// export function foo () {}
+						name = declaration.id.name;
+					}
+
+					this.exports[ name ] = {
+						statement,
+						localName: name,
+						expression: declaration
+					};
+				}
+		}
 
 	}
 }
