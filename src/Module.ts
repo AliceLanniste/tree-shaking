@@ -10,6 +10,7 @@ export class Module {
     private statements:Statement[] | null = null;
 	private comments:Comment[] =[];
 	private magicString:MagicString;
+	dependencies:string[] =[];
 	imports: Record<string,unknown> = {};
 	exports: Record<string,unknown>;
 
@@ -63,7 +64,8 @@ export class Module {
 
 	addImport(statement: Statement) {
 		const node = statement.node as ImportDeclaration;
-		const importee = node.source.value;
+		const importee = node.source.value as string;
+		if (!this.dependencies.indexOf(importee)) this.dependencies.push(importee)
 		// check type of importDeclaration:ImportDefaultSpecifer,ImportSpecifer,ImportNamespaceSpecifer
 		node.specifiers.forEach(specifer => {
 			const isDefault = specifer.type == "ImportDefaultSpecifier";
