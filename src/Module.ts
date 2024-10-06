@@ -1,10 +1,17 @@
 import { Graph } from "./Graph";
 import { Statement } from './node/Statement';
 import { rainbowOptions } from "./types";
-import { ExportDefaultDeclaration, ExportNamedDeclaration, FunctionDeclaration, Identifier, ImportDeclaration, parse, Program } from "acorn";
+import { ExportDefaultDeclaration, 
+		ExportNamedDeclaration, 
+		FunctionDeclaration, 
+		Identifier,
+		ImportDeclaration, 
+		parse, 
+		Program } from "acorn";
 import { Comment } from "./node/Comment";
 import { ErrCode, error } from "./error";
 import MagicString from "magic-string";
+
 export class Module {
 	private code: string;
     private statements:Statement[] | null = null;

@@ -1,10 +1,10 @@
 import { resolve } from "path";
 import { normalizeModules } from '../utils/utils';
 
-type inputOption =Record<string,string>;
+type inputOption = {name: string, import:string};
 
 export interface InputOptions {
-    input?: inputOption;
+    input?: inputOption[];
 }
 
 export interface OutputOptions {

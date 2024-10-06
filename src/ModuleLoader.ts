@@ -1,11 +1,10 @@
-import { NomlaizedResolveIdWithoutDefaults, ResolvedId, ResolveResult, type rainbowOptions } from "./types/options";
+import { ResolveResult, type rainbowOptions } from "./types/options";
 import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
-import {relativeId, load, resolveId } from "./utils/utils";
+import {relativeId, load, resolveId, transform } from "./utils/utils";
 import { Graph } from "./Graph";
 import { error } from "console";
 import { ErrCode } from "./error";
-import path from "path";
 export class ModuleLoader {
     
      constructor(
@@ -24,7 +23,6 @@ export class ModuleLoader {
 		}
     }
 
-    //unresolveId是什么,importer是什么
 	private async loadModule(
 		unresolvedId: string,
 		isEntry: boolean,
@@ -52,7 +50,7 @@ export class ModuleLoader {
          if(existingModule) {
             return existingModule;
          }
-         //isEntry=true,entryModule else import module
+        
 		const module = new Module(
 			this.graph,
 			id,
@@ -62,8 +60,11 @@ export class ModuleLoader {
 		);
 		this.modulesById.set(id, module);
 
-       await this.loadModuleSource(id,importer)
+       const sourceObject = await this.loadModuleSource(id,importer)
+       if (sourceObject) {
+        module.setSource(sourceObject);
         this.fetchAllDependencies(module);
+       }
         return module;
     }
 
@@ -72,35 +73,17 @@ export class ModuleLoader {
         module.dependencies.forEach(path => this.loadModule(path,false,module.id));
     }
 
-    private async loadModuleSource(id: string, importer: string|undefined): Promise<string> {
-        let source: string;
-        try {
-            source = await load(id);
-            return source;
-           
-        } catch (_error:unknown) {
-            let message = `Could not load ${id}`;
-			if (importer) message += ` (imported by ${relativeId(importer)})`; 
-            error({
-                code:ErrCode.LODE_MODULE,
-                message: message
-            }) 
-        }
-        //
-    }
-
-    private getResolveIdWithResult(resolvedId: NomlaizedResolveIdWithoutDefaults | null, 
-                                    attributes:Record<string,string>): ResolvedId | null {
-        if (!resolvedId) {
-            return null;
-        }
-        const external = resolvedId.external || false;
-        return {
-            attributes:resolvedId.attributes || attributes,
-            external,
-            id:resolvedId.id,
-			resolvedBy: resolvedId.resolveBy ?? 'rollup',
-			syntheticNamedExports: resolvedId.syntheticNamedExports ?? false
-        }
+    private async loadModuleSource(id: string, importer: string|undefined): Promise<{code:string, ast: string | null} | undefined>  {
+           return load(id)
+                .catch(err => {
+                    let message = `Could not load ${id}`;
+                    if (importer) message += ` (imported by ${relativeId(importer)})`; 
+                    error({
+                        code:ErrCode.LODE_MODULE,
+                        message: message
+                    }) 
+                }).then((source => {
+                    if ( typeof source === 'string' ) return transform(source);
+                }))
     }
 }

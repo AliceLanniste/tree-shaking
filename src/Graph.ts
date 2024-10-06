@@ -18,6 +18,6 @@ export class Graph {
     }
 
     generateModuleGraph() {
-        this.moduleLoader.addEntryModule(normalizeModules(this.options.input!), true);
+        this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
     }
 }

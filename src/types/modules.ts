@@ -1,6 +1,6 @@
 export interface UnresolvedModule {
-	fileName: string | null;
+	fileName?:string;
 	id: string;
-	importer: string | undefined;
-	name: string | null;
+	importer?: string ;
+	name: string ;
 }

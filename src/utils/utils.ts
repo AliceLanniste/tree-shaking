@@ -1,5 +1,5 @@
 import { basename, dirname, relative, resolve } from 'node:path';
-import { rainbowOptions, ResolveResult } from '../types/options';
+import { rainbowOptions, ResolveResult, InputOptions } from '../types/options';
 import { UnresolvedModule } from '../types/modules';
 
 import { readdir, readFile } from 'fs/promises';
@@ -13,19 +13,22 @@ export function isAbsolute(path: string): boolean {
 export function normalizeOptions(options: rainbowOptions) {
     let resolvePath: string[] = [];
     if(options.input) {
-        resolvePath =Object.values(options.input).map((s) => resolve(s.replace(/\.js$/, '') + '.js'))
+        resolvePath =Object.values(options.input).map((entryOption) => resolve(entryOption.import.replace(/\.js$/, '') + '.js'))
     }
     return resolvePath;
 }
 
-export function normalizeModules(entryPoints: Record<string,string>):UnresolvedModule[] {
-
-    return Object.entries(entryPoints).map(([name, id]) => ({
-		fileName: null,
-		id,
-		importer: undefined,
-		name
-	}));
+export function normalizeModules(entryPoints: InputOptions):UnresolvedModule[] {
+    if(entryPoints.input) {
+        return entryPoints.input.map( entryOption => ({
+            id:entryOption.import,	
+            name: entryOption.name
+        }));
+    } else {
+        //Default entryPoint
+        return []
+    }
+    
 
 }
 
@@ -64,7 +67,7 @@ export  function relativeId(id: string): string {
 	return relative(resolve(), id);
 }
 
-//transform source to transform OAject
+//transform source to transform OAjec
 export function transform(source: string):{code:string, ast: string | null} {
     return {
         code: source,
