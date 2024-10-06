@@ -34,6 +34,7 @@ export class Module {
 		this.code = code
 		this.magicString = new MagicString(this.code, {filename: this.id});
 		this.statements = this.parse(ast)
+		this.analyse()
 	}
 
 	parse(ast:Program):Statement[] {
@@ -56,7 +57,6 @@ export class Module {
 		const magicString = this.magicString.snip( node.start, node.end );
 		return new Statement( node, this, i, magicString );
 	});
-
 
 	 return statements;
 	}	
