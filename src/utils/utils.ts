@@ -3,6 +3,7 @@ import { rainbowOptions, ResolveResult, InputOptions } from '../types/options';
 import { UnresolvedModule } from '../types/modules';
 
 import { readdir, readFile } from 'fs/promises';
+import { Identifier } from 'acorn';
 
 const ABSOLUTE_PATH_REGEX = /^(?:\/|(?:[A-Za-z]:)?[/\\|])/;
 
@@ -73,4 +74,8 @@ export function transform(source: string):{code:string, ast: string | null} {
         code: source,
         ast: null
     }
+}
+
+export function getName ( x:Identifier ) {
+	return x.name;
 }
