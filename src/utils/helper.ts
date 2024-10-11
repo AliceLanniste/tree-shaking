@@ -1,4 +1,4 @@
-import {Function, FunctionDeclaration, Node, VariableDeclaration, VariableDeclarator, type Program} from 'acorn';
+import {Function, FunctionDeclaration, Identifier, Node, VariableDeclaration, VariableDeclarator, type Program} from 'acorn';
 import Scope from './scope';
 import { getName } from './utils';
 
@@ -77,7 +77,7 @@ export function analyse(ast: Program) {
 				case 'ArrowFunctionExpression':
                 case 'FunctionExpression':
                     let functionNode = node as Function;
-                    let names = functionNode.params.map( getName );
+                    let names = (functionNode.params as Identifier[]).map( getName );
                     if (functionNode.type == "FunctionDeclaration") {
 						addToScope(functionNode as FunctionDeclaration);
 					} else if(functionNode.type =="FunctionExpression" && functionNode.id) {
