@@ -1,16 +1,16 @@
 type scopeOptionType = {
-    parent?:Scope,
+    parent:Scope |null,
     params?:string[],
     isBlockScope?:boolean,
 }
 
 export default class Scope {
     params: string[];
-    parent: Scope | undefined;
+    parent: Scope | null;
     isBlockScope:boolean ;
     options:scopeOptionType;
 
-    constructor(options:scopeOptionType ={}) {
+    constructor(options:scopeOptionType = {parent:null}) {
         this.options =options || {};
         this.parent = this.options.parent;
         this.params = this.options.params || [];

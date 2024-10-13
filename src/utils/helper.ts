@@ -1,4 +1,4 @@
-import {Function, FunctionDeclaration, Identifier, Node, VariableDeclaration, VariableDeclarator, type Program} from 'acorn';
+import {ClassDeclaration, ClassExpression, Function, FunctionDeclaration, Identifier, Node, VariableDeclaration, VariableDeclarator, type Program} from 'acorn';
 import Scope from './scope';
 import { getName } from './utils';
 
@@ -19,48 +19,43 @@ interface  enhancedNode {
     defines?:any,
     modifies?:any,
     dependOn?:any,
-    scope?:Scope,
+    scope:Scope | null,
 }
-
-let context ={
-    skip:()=>shouldSkip = true,
-    abort:() => shouldAbort = true,
-}
-
-
 
 
 
 export function analyse(ast: Program) {
-   let scope  =new Scope();
-   let currentTopStatement: enhancedNode;
+   let scope:Scope | null  =new Scope();
+   let currentTopStatement: enhancedNode | null;
    let topLevelStatement: enhancedNode[];
 
-   function addToScope(node: FunctionDeclaration) {
-        const name = node.id.name;
-        scope.add(name,false);
+   function addToScope(node: FunctionDeclaration | VariableDeclarator | ClassDeclaration | ClassExpression) {
+        const name = (node.id as Identifier).name;
+        scope!!.add(name,false);
 
-        if(!scope.parent) {
+        if(!scope!!.parent && currentTopStatement) {
             currentTopStatement.defines[name] = true;
         }
    }
 
    
-//    function addToBlockScope(node: VariableDeclarator) {
-//         const name = node.id.name;
-//         scope.add(name,true);
+   function addToBlockScope(node: VariableDeclarator) {
+        const name = (node.id as Identifier).name;
+        scope!!.add(name,true);
 
-//         if(!scope.parent) {
-//             currentTopStatement.defines[name] = true;
-//         }
-//    }
+        if(!scope!!.parent && currentTopStatement) {
+            currentTopStatement.defines[name] = true;
+        }
+   }
 
 
    walk(ast, {
+
         enter(node) {
             let enNode:enhancedNode = {
                 node,
                 type:node.type,
+                scope:null,
             }
             if(!currentTopStatement && isStatement(node)){
                  enNode.defines = {};
@@ -89,12 +84,49 @@ export function analyse(ast: Program) {
 						isBlockScope: false
                     })
                     break
+
+                case 'BlockStatement':
+                    scope = enNode.scope = new Scope({
+                        parent:scope,
+                        isBlockScope:true
+                    })     
+                
+                break;
+
+                case 'VariableDeclaration':
+                    let variableDeclNode = enNode.node as VariableDeclaration;
+                     variableDeclNode.declarations.forEach(
+                           variableDeclNode.kind =="let" ? addToBlockScope : addToScope)
+                    break
+                
+                case 'classDeclaration':
+                    let classDeclNode = enNode.node as ClassDeclaration;
+                    addToScope(classDeclNode);    
+                    break
+
+                case 'classExpression':
+                    let classExprNode = enNode.node as ClassExpression;
+                    addToScope(classExprNode);
+                    break;
             }
         },
 
         leave(node) {
-            
-        },
+            if (node === currentTopStatement?.node) {
+                currentTopStatement = null
+            }
+
+            switch ( node.type ) {
+				case 'FunctionExpression':
+				case 'FunctionDeclaration':
+				case 'ArrowFunctionExpression':
+				case 'BlockStatement':
+					scope = scope? scope.parent : null;
+					break;
+			}
+
+
+      }
    })
 }
 
