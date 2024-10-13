@@ -11,15 +11,19 @@ import { ExportDefaultDeclaration,
 import { Comment } from "./node/Comment";
 import { ErrCode, error } from "./error";
 import MagicString from "magic-string";
+import { analyseAST } from "./utils/helper";
 
 export class Module {
 	private code: string;
     private statements:Statement[] | null = null;
 	private comments:Comment[] =[];
 	private magicString:MagicString;
+	private ast:Program;
 	dependencies:string[] =[];
 	imports: Record<string,unknown> = {};
-	exports: Record<string,unknown>;
+	exports: Record<string,unknown> ={};
+    definitions:Record<string,unknown> = {};
+	modifications:Record<string,unknown> = {}
 
     constructor(
         private readonly graph: Graph,
@@ -40,7 +44,7 @@ export class Module {
 	parse(ast:Program):Statement[] {
      if(!ast) {
 		try {
-			ast = parse(this.code, {
+			this.ast = parse(this.code, {
 				ecmaVersion:6,
 				sourceType:"module",
 				onComment: ( block, text, start, end ) => this.comments.push({ block, text, start, end })
@@ -67,6 +71,19 @@ export class Module {
 			if (statement.isImportDeclartion()) this.addImport(statement)
 			if (statement.isExportDeclartion()) this.addExport(statement)
 		 }); 
+		const {ast,scope ,topLevelStatements}= analyseAST(this.ast)
+		topLevelStatements.forEach(statement =>{
+			Object.keys(statement.defines).forEach(name =>
+				this.definitions[name] =statement
+			)
+
+			Object.keys(statement.modifies).forEach(name =>
+				this.modifications[name] = statement
+			)
+		}
+			
+		)
+		// topLevelStatements
 	}
 
 	addImport(statement: Statement) {
@@ -154,4 +171,6 @@ export class Module {
 		}
 
 	}
+
+
 }

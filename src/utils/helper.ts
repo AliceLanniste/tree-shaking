@@ -9,7 +9,7 @@ let shouldAbort: boolean = false;
 interface analysedAST {
     ast: Program,
     scope:Scope,
-    topLevelStatement: enhancedNode[],
+    topLevelStatements: enhancedNode[],
 }
 
 
@@ -24,10 +24,10 @@ interface  enhancedNode {
 
 
 
-export function analyse(ast: Program) {
+export function analyseAST(ast: Program) {
    let scope:Scope | null  =new Scope();
    let currentTopStatement: enhancedNode | null;
-   let topLevelStatement: enhancedNode[];
+   let topLevelStatements: enhancedNode[] =[];
 
    function addToScope(node: FunctionDeclaration | VariableDeclarator | ClassDeclaration | ClassExpression) {
         const name = (node.id as Identifier).name;
@@ -63,7 +63,7 @@ export function analyse(ast: Program) {
                  enNode.dependOn = {}
                 currentTopStatement = enNode;
 
-                topLevelStatement.push(enNode);
+                topLevelStatements.push(enNode);
             }
             const {type} = enNode;
             
@@ -128,6 +128,12 @@ export function analyse(ast: Program) {
 
       }
    })
+
+   return {
+    ast,
+   scope,
+   topLevelStatements
+   }
 }
 
 
