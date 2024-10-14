@@ -5,8 +5,10 @@ import {relativeId, load, resolveId, transform } from "./utils/utils";
 import { Graph } from "./Graph";
 import { error } from "console";
 import { ErrCode } from "./error";
+import {  Node } from "acorn";
+
 export class ModuleLoader {
-    
+     bodyStatement:Node[];
      constructor(
         private readonly graph: Graph,
         private readonly modulesById: Map<string, Module>,
@@ -16,11 +18,22 @@ export class ModuleLoader {
      }
 
     async addEntryModule(unresolveModules:UnresolvedModule[], isUserDefined: boolean) {
-        const newEntryModules = await Promise.all(unresolveModules.map(({id, importer}) => 
+        const entryModules = await Promise.all(unresolveModules.map(({id, importer}) => 
                                this.loadModule(id,true,importer)))
-        if (newEntryModules.length === 0) {
+        if (entryModules.length === 0) {
 			throw new Error('You must supply options.input to rollup');
 		}
+
+        let entryModuleAST = entryModules.map(module => module.ast);
+        entryModuleAST.map((ast) => {
+            ast.body.forEach(node => {
+                 // exclude imports and exports, include everything else
+            if ( !/^(?:Im|Ex)port/.test( node.type ) ) {
+                this.bodyStatement.push( node );
+            }
+            })
+        })
+        return entryModules;
     }
 
 	private async loadModule(
@@ -70,7 +83,12 @@ export class ModuleLoader {
 
 
     private fetchAllDependencies(module:Module) {
-        module.dependencies.forEach(path => this.loadModule(path,false,module.id));
+       Object.entries( module.imports).forEach(([name, importObj])=> 
+            this.loadModule(importObj.importee!,false,module.id)
+                .then(module => {
+                    let statement = module.expandStatement(name) || [];
+                    this.bodyStatement.concat(statement)
+                }));
     }
 
     private async loadModuleSource(id: string, importer: string|undefined): Promise<{code:string, ast: string | null} | undefined>  {

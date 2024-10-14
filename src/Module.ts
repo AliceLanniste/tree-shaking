@@ -1,12 +1,13 @@
 import { Graph } from "./Graph";
 import { Statement } from './node/Statement';
-import { rainbowOptions } from "./types";
+import { moduleImport, rainbowOptions } from "./types";
 import { ExportDefaultDeclaration, 
 		ExportNamedDeclaration, 
 		FunctionDeclaration, 
 		Identifier,
 		ImportDeclaration, 
 		parse, 
+		Node,
 		Program } from "acorn";
 import { Comment } from "./node/Comment";
 import { ErrCode, error } from "./error";
@@ -18,12 +19,12 @@ export class Module {
     private statements:Statement[] | null = null;
 	private comments:Comment[] =[];
 	private magicString:MagicString;
-	private ast:Program;
+    ast:Program;
 	dependencies:string[] =[];
-	imports: Record<string,unknown> = {};
+	imports: Record<string,moduleImport> = {};
 	exports: Record<string,unknown> ={};
-    definitions:Record<string,unknown> = {};
-	modifications:Record<string,unknown> = {}
+    definitions:Record<string,Node> = {};
+	modifications:Record<string,Node> = {}
 
     constructor(
         private readonly graph: Graph,
@@ -74,16 +75,15 @@ export class Module {
 		const {ast,scope ,topLevelStatements}= analyseAST(this.ast)
 		topLevelStatements.forEach(statement =>{
 			Object.keys(statement.defines).forEach(name =>
-				this.definitions[name] =statement
+				this.definitions[name] =statement.node
 			)
 
 			Object.keys(statement.modifies).forEach(name =>
-				this.modifications[name] = statement
+				this.modifications[name] = statement.node
 			)
 		}
 			
 		)
-		// topLevelStatements
 	}
 
 	addImport(statement: Statement) {
@@ -171,6 +171,17 @@ export class Module {
 		}
 
 	}
+    
 
+	expandStatement( name: string) {
+      let declStatement = this.definitions[name]
+	  if(declStatement) {
+		let nodes:Node[] =[]
+		
+		nodes.push(declStatement)
+
+		return nodes;
+	  }
+	}
 
 }
