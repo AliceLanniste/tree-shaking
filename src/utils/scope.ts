@@ -11,7 +11,7 @@ export default class Scope {
     options:scopeOptionType;
 
     constructor(options:scopeOptionType = {parent:null}) {
-        this.options =options || {};
+        this.options =options;
         this.parent = this.options.parent;
         this.params = this.options.params || [];
         this.isBlockScope = this.options.isBlockScope || false;
