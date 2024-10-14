@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "acron": "^1.0.5",
+    "escodegen": "^2.1.0",
     "magic-string": "^0.30.11"
   }
 }
