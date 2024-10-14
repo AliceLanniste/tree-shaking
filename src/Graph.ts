@@ -13,11 +13,13 @@ export class Graph {
 
     } 
 
-    createModuleGraph() {
-        this.generateModuleGraph()
+    async createModuleGraph() {
+       await this.generateModuleGraph()
     }
 
-    generateModuleGraph() {
-        this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
+    async generateModuleGraph() {
+        await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
+        return this.moduleLoader.bodyStatement;
     }
+
 }
