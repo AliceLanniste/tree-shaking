@@ -1,14 +1,14 @@
 import { ResolveResult, type rainbowOptions } from "./types/options";
 import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
-import {relativeId, load, resolveId, transform } from "./utils/utils";
+import {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
 import { Graph } from "./Graph";
 import { error } from "console";
 import { ErrCode } from "./error";
 import {  Node } from "acorn";
 
 export class ModuleLoader {
-     bodyStatement:Node[];
+     bodyStatement:Node[] = [];
      constructor(
         private readonly graph: Graph,
         private readonly modulesById: Map<string, Module>,
@@ -33,7 +33,7 @@ export class ModuleLoader {
             }
             })
         })
-        return entryModules;
+        return this;
     }
 
 	private async loadModule(
@@ -76,19 +76,22 @@ export class ModuleLoader {
        const sourceObject = await this.loadModuleSource(id,importer)
        if (sourceObject) {
         module.setSource(sourceObject);
-        this.fetchAllDependencies(module);
+        await this.fetchAllDependencies(module);
        }
         return module;
     }
 
 
-    private fetchAllDependencies(module:Module) {
-       Object.entries( module.imports).forEach(([name, importObj])=> 
-            this.loadModule(importObj.importee!,false,module.id)
-                .then(module => {
-                    let statement = module.expandStatement(name) || [];
-                    this.bodyStatement.concat(statement)
-                }));
+    private  async fetchAllDependencies(entryModule:Module) {
+     return await sequence(Object.entries(entryModule.imports), ([name, importObj])=> {
+                this.loadModule(importObj.importee!,false,module.id)
+                    .then(module => {
+                        let statement = module.expandStatement(name) || [];
+                        this.bodyStatement = this.bodyStatement.concat(statement)
+                        console.log("sequence",this.bodyStatement)
+                    })
+                }
+            )  
     }
 
     private async loadModuleSource(id: string, importer: string|undefined): Promise<{code:string, ast: string | null} | undefined>  {
