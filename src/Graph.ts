@@ -2,7 +2,7 @@ import { Module } from "./Module";
 import { ModuleLoader } from "./ModuleLoader";
 import { type rainbowOptions } from "./types";
 import { normalizeModules } from "./utils/utils";
-
+import { Node } from "acorn";
 export class Graph {
     readonly moduleLoader:ModuleLoader;
     readonly modulesById = new Map<string, Module>();
@@ -13,13 +13,13 @@ export class Graph {
 
     } 
 
-    async createModuleGraph() {
-       await this.generateModuleGraph()
+    async createModuleGraph():Promise<Node[]> {
+       return await this.generateModuleGraph()
     }
 
-    async generateModuleGraph() {
-        await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
-        return this.moduleLoader.bodyStatement;
+    async generateModuleGraph():Promise<Node[]> {
+       let moduleLoader = await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
+        return moduleLoader.bodyStatement;
     }
 
 }

@@ -24,15 +24,15 @@ export class ModuleLoader {
 			throw new Error('You must supply options.input to rollup');
 		}
 
-        let entryModuleAST = entryModules.map(module => module.ast);
-        entryModuleAST.map((ast) => {
-            ast.body.forEach(node => {
-                 // exclude imports and exports, include everything else
-            if ( !/^(?:Im|Ex)port/.test( node.type ) ) {
-                this.bodyStatement.push( node );
-            }
-            })
-        })
+        // let entryModuleAST = entryModules.map(module => module.ast);
+        // entryModuleAST.map((ast) => {
+        //     ast.body.forEach(node => {
+        //          // exclude imports and exports, include everything else
+        //     if ( !/^(?:Im|Ex)port/.test( node.type ) ) {
+        //         this.bodyStatement.push( node );
+        //     }
+        //     })
+        // })
         return this;
     }
 
@@ -45,7 +45,6 @@ export class ModuleLoader {
         if (resolveResult === null) {
              error()
         }
-
         return this.fetchModule(
                 resolveResult,
                 undefined,
@@ -83,15 +82,31 @@ export class ModuleLoader {
 
 
     private  async fetchAllDependencies(entryModule:Module) {
-     return await sequence(Object.entries(entryModule.imports), ([name, importObj])=> {
-                this.loadModule(importObj.importee!,false,module.id)
+    
+     await sequence(Object.entries(entryModule.imports), ([name, importObj])=> {
+               return this.loadModule(importObj.importee!,false,entryModule.id)
                     .then(module => {
-                        let statement = module.expandStatement(name) || [];
-                        this.bodyStatement = this.bodyStatement.concat(statement)
-                        console.log("sequence",this.bodyStatement)
+                        
+                        let statements = module.expandStatement(name) || [];
+                        
+                         this.bodyStatement =this.bodyStatement.concat.apply(statements)
                     })
                 }
-            )  
+            ).then(() => 
+                entryModule.ast.body.forEach((node) => {
+                            if ( !/^(?:Im|Ex)port/.test( node.type ) ){
+                                this.bodyStatement.push(node)
+                            }
+                        }) 
+            )
+
+            console.log("sequence",entryModule.id,this.bodyStatement);
+        //     .then(() => entryModule.ast.body.forEach((node) => {
+        //         if ( !/^(?:Im|Ex)port/.test( node.type ) ){
+        //             this.bodyStatement.push(node)
+        //         }
+        //     }) 
+        // ) 
     }
 
     private async loadModuleSource(id: string, importer: string|undefined): Promise<{code:string, ast: string | null} | undefined>  {

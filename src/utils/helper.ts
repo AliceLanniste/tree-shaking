@@ -158,7 +158,7 @@ function visit(ast:Node,parent:Node |null, walkFunc: walkFunc) {
     let j:number = -1;
     while (i--) {
         let key = keys[i];
-        let node = ast[i];
+        let node = ast[key];
         if(Array.isArray(node)) {
             j= node.length;
             while (j--) {

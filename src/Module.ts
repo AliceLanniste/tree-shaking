@@ -58,7 +58,7 @@ export class Module {
 		}
 	 }
 	 let statements:Statement[] = [];
-	 statements = ast.body.map( ( node, i ) => {
+	 statements = this.ast.body.map( ( node, i ) => {
 		const magicString = this.magicString.snip( node.start, node.end );
 		return new Statement( node, this, i, magicString );
 	});
@@ -175,11 +175,12 @@ export class Module {
 
 	expandStatement( name: string) {
       let declStatement = this.definitions[name]
+	
 	  if(declStatement) {
 		let nodes:Node[] =[]
 		
 		nodes.push(declStatement)
-
+		// console.log("expandStatement",nodes);
 		return nodes;
 	  }
 	}

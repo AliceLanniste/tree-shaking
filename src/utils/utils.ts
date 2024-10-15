@@ -21,6 +21,7 @@ export function normalizeOptions(options: rainbowOptions) {
 
 export function normalizeModules(entryPoints: InputOptions):UnresolvedModule[] {
     if(entryPoints.input) {
+        
         return entryPoints.input.map( entryOption => ({
             id:entryOption.import,	
             name: entryOption.name
@@ -78,4 +79,28 @@ export function transform(source: string):{code:string, ast: string | null} {
 
 export function getName ( x:Identifier ) {
 	return x.name;
+}
+
+
+
+export async function sequence ( arr: unknown[], callback ) {
+	const len = arr.length;
+	let results = new Array( len );
+
+	let promise = Promise.resolve();
+
+	function next ( i:number ) {
+		return promise
+			.then( () => callback( arr[i]) )
+			.then( result => results[i] = result );
+	}
+
+	let i: number;
+
+	for ( i = 0; i < len; i += 1 ) {
+		promise = next( i );
+	}
+
+	await promise;
+    return results;
 }

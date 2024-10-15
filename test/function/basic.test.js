@@ -24,9 +24,10 @@ import { test } from 'vitest';
                          try {
                             let fn = new Function('assert', result.code);
                             fn(assert)
+                            console.log( "success-generate",result.code );
 
                          } catch (error) {
-                            console.log( result.code );
+                            console.log( "error-generate",result.code );
                             throw error;
                          }
                      }
