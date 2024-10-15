@@ -23,16 +23,6 @@ export class ModuleLoader {
         if (entryModules.length === 0) {
 			throw new Error('You must supply options.input to rollup');
 		}
-
-        // let entryModuleAST = entryModules.map(module => module.ast);
-        // entryModuleAST.map((ast) => {
-        //     ast.body.forEach(node => {
-        //          // exclude imports and exports, include everything else
-        //     if ( !/^(?:Im|Ex)port/.test( node.type ) ) {
-        //         this.bodyStatement.push( node );
-        //     }
-        //     })
-        // })
         return this;
     }
 
@@ -48,7 +38,7 @@ export class ModuleLoader {
         return this.fetchModule(
                 resolveResult,
                 undefined,
-                true
+                isEntry
                 )
 
     }
@@ -100,13 +90,6 @@ export class ModuleLoader {
                         }) 
             )
 
-            console.log("sequence",entryModule.id,this.bodyStatement);
-        //     .then(() => entryModule.ast.body.forEach((node) => {
-        //         if ( !/^(?:Im|Ex)port/.test( node.type ) ){
-        //             this.bodyStatement.push(node)
-        //         }
-        //     }) 
-        // ) 
     }
 
     private async loadModuleSource(id: string, importer: string|undefined): Promise<{code:string, ast: string | null} | undefined>  {

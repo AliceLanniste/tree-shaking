@@ -180,7 +180,6 @@ export class Module {
 		let nodes:Node[] =[]
 		
 		nodes.push(declStatement)
-		// console.log("expandStatement",nodes);
 		return nodes;
 	  }
 	}

@@ -19,7 +19,6 @@ import { test } from 'vitest';
                                  } 
                               ]
                          })
-                        //  console.log('bundler',bundle);
                          let result = bundle.generate({format:'cjs'})
                          try {
                             let fn = new Function('assert', result.code);
