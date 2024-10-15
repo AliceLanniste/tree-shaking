@@ -2,10 +2,10 @@ import  typescript from '@rollup/plugin-typescript';
 import  commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import json from '@rollup/plugin-json';
-
+import { resolve } from 'path';
 export default {
     input:{
-        'rollup.js': 'src/index.ts'
+        'rainbowpack.js': 'src/index.ts'
 
     },
 
@@ -29,6 +29,12 @@ export default {
             ignoreTryCatch: false,
             include: 'node_modules/**'
         }),
-        typescript()]
+        typescript()
+    ],
 	
+    resolve: {
+        alias: {
+          '@src': resolve(__dirname, 'src'),
+        },
+      },
 };
