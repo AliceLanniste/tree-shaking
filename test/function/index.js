@@ -7,14 +7,13 @@ import { test } from 'vitest';
  runTestsWithSample("function",
        resolve(__dirname, "basic"),
        (directory, config) => {
-             
               (config.skip ? test.skip : config.solo ? test.only : test) (
                      basename(directory) + ': ' + config.description,
                      async () => {
                         let bundle = await rainbowpack({
                            input:[
                                  {
-                                    name:'main',
+                                 name:'main',
                                  import: directory +'/main.js'
                                  } 
                               ]
