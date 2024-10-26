@@ -18,7 +18,7 @@ export class Module {
 	private code: string;
     private statements:Statement[] | null = null;
 	private comments:Comment[] =[];
-	private magicString:MagicString;
+	private magicCode:MagicString;
     ast:Program;
 	dependencies:string[] =[];
 	imports: Record<string,moduleImport> = {};
@@ -37,7 +37,7 @@ export class Module {
 
 	setSource({code, ast}) {
 		this.code = code
-		this.magicString = new MagicString(this.code, {filename: this.id});
+		this.magicCode = new MagicString(this.code, {filename: this.id});
 		this.statements = this.parse(ast)
 		this.analyse()
 	}
@@ -58,9 +58,9 @@ export class Module {
 		}
 	 }
 	 let statements:Statement[] = [];
-	 statements = this.ast.body.map( ( node, i ) => {
-		const magicString = this.magicString.snip( node.start, node.end );
-		return new Statement( node, this, i, magicString );
+	 statements = this.ast.body.map( ( node, index ) => {
+		const magicString = this.magicCode.snip( node.start, node.end );
+		return new Statement( node,  magicString);
 	});
 
 	 return statements;
@@ -72,7 +72,7 @@ export class Module {
 			if (statement.isImportDeclartion()) this.addImport(statement)
 			if (statement.isExportDeclartion()) this.addExport(statement)
 		 }); 
-		const {ast,scope ,topLevelStatements}= analyseAST(this.ast)
+		const {ast,scope ,topLevelStatements}= analyseAST(this.ast,this.magicCode)
 		topLevelStatements.forEach(statement =>{
 			Object.keys(statement.defines).forEach(name =>
 				this.definitions[name] =statement.node

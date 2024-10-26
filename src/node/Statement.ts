@@ -1,16 +1,31 @@
-import { ModuleDeclaration, Statement as Acorn_Statement } from "acorn";
+import {  Node } from "acorn";
 import {Module} from "../Module";
 import MagicString from "magic-string";
+import Scope from "../utils/scope";
 
 export class Statement {
-    node:Acorn_Statement | ModuleDeclaration;
-    
-    constructor(node:Acorn_Statement | ModuleDeclaration,
-        private readonly module: Module,
-        private readonly index: number,
-        private readonly magicString:MagicString,
+    node: Node;
+   defines: Record<string,any>;
+   modifies:  Record<string,any>;
+   dependOn: Record<string,any>;
+   type: string;
+   scope: Scope;
+   
+    constructor(node:Node,
+        // private readonly module: Module,
+        // private readonly index: number,
+        magicString:MagicString,
+        defines: Record<string,any> ={},
+        modifies:  Record<string,any> ={},
+        dependOn: Record<string,any> = {},
+      
+
     ){
        this.node = node;
+       this.defines = defines;
+       this.modifies = modifies;
+       this.dependOn = dependOn;
+       this.type = this.node.type;
     }
 
     isImportDeclartion(): boolean {

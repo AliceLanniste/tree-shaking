@@ -1,6 +1,8 @@
 import {ClassDeclaration, ClassExpression, Function, FunctionDeclaration, Identifier, Node, VariableDeclaration, VariableDeclarator, type Program} from 'acorn';
 import Scope from './scope';
 import { getName } from './utils';
+import MagicString from 'magic-string';
+import { Statement } from '../node/Statement';
 
 type walkFunc = { enter: ((node:Node) => void) | null,leave:((node:Node)=>void) | null};
 let shouldSkip:boolean =false;
@@ -24,10 +26,10 @@ interface  enhancedNode {
 
 
 
-export function analyseAST(ast: Program) {
+export function analyseAST(ast: Program, code: MagicString) {
    let scope:Scope | null  =new Scope();
-   let currentTopStatement: enhancedNode | null;
-   let topLevelStatements: enhancedNode[] =[];
+   let currentTopStatement:Statement | null;
+   let topLevelStatements: Statement[] =[];
 
    function addToScope(node: FunctionDeclaration | VariableDeclarator | ClassDeclaration | ClassExpression) {
         const name = (node.id as Identifier).name;
@@ -48,24 +50,19 @@ export function analyseAST(ast: Program) {
         }
    }
 
-
+   let previous = 0
    walk(ast, {
 
         enter(node) {
-            let enNode:enhancedNode = {
-                node,
-                type:node.type,
-                scope:null,
-            }
+            let statement = new Statement(node,code.snip(previous,node.end))
+            previous = node.end
             if(!currentTopStatement && isStatement(node)){
-                 enNode.defines = {};
-                 enNode.modifies = {}
-                 enNode.dependOn = {}
-                currentTopStatement = enNode;
+                
+                currentTopStatement = statement;
 
-                topLevelStatements.push(enNode);
+                topLevelStatements.push(statement);
             }
-            const {type} = enNode;
+            const {type} = statement;
             
             switch(type) {
 				case 'FunctionDeclaration':
@@ -78,7 +75,7 @@ export function analyseAST(ast: Program) {
 					} else if(functionNode.type =="FunctionExpression" && functionNode.id) {
                         names.push(functionNode.id.name)
                     }
-                    scope = enNode.scope = new Scope({
+                    scope = statement.scope = new Scope({
                         parent: scope,
 						params: names, 
 						isBlockScope: false
@@ -86,7 +83,7 @@ export function analyseAST(ast: Program) {
                     break
 
                 case 'BlockStatement':
-                    scope = enNode.scope = new Scope({
+                    scope = statement.scope = new Scope({
                         parent:scope,
                         isBlockScope:true
                     })     
@@ -94,18 +91,18 @@ export function analyseAST(ast: Program) {
                 break;
 
                 case 'VariableDeclaration':
-                    let variableDeclNode = enNode.node as VariableDeclaration;
+                    let variableDeclNode = statement.node as VariableDeclaration;
                      variableDeclNode.declarations.forEach(
                            variableDeclNode.kind =="let" ? addToBlockScope : addToScope)
                     break
                 
                 case 'classDeclaration':
-                    let classDeclNode = enNode.node as ClassDeclaration;
+                    let classDeclNode = statement.node as ClassDeclaration;
                     addToScope(classDeclNode);    
                     break
 
                 case 'classExpression':
-                    let classExprNode = enNode.node as ClassExpression;
+                    let classExprNode = statement.node as ClassExpression;
                     addToScope(classExprNode);
                     break;
             }
