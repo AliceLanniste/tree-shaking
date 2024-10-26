@@ -50,18 +50,12 @@ export function analyseAST(ast: Program, code: MagicString) {
         }
    }
 
-   let previous = 0
    walk(ast, {
-
         enter(node) {
-            let statement = new Statement(node,code.snip(previous,node.end))
-            previous = node.end
-            if(!currentTopStatement && isStatement(node)){
-                
-                currentTopStatement = statement;
-
-                topLevelStatements.push(statement);
-            }
+            let sourceString =code.snip(node.start,node.end);
+            let statement = new Statement(node,sourceString)
+            currentTopStatement = statement;
+            topLevelStatements.push(statement);
             const {type} = statement;
             
             switch(type) {
@@ -72,7 +66,9 @@ export function analyseAST(ast: Program, code: MagicString) {
                     let names = (functionNode.params as Identifier[]).map( getName );
                     if (functionNode.type == "FunctionDeclaration") {
 						addToScope(functionNode as FunctionDeclaration);
+
 					} else if(functionNode.type =="FunctionExpression" && functionNode.id) {
+
                         names.push(functionNode.id.name)
                     }
                     scope = statement.scope = new Scope({
@@ -125,7 +121,7 @@ export function analyseAST(ast: Program, code: MagicString) {
 
       }
    })
-
+ 
    return {
     ast,
    scope,

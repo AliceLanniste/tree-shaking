@@ -73,6 +73,7 @@ export class Module {
 			if (statement.isExportDeclartion()) this.addExport(statement)
 		 }); 
 		const {ast,scope ,topLevelStatements}= analyseAST(this.ast,this.magicCode)
+		
 		topLevelStatements.forEach(statement =>{
 			Object.keys(statement.defines).forEach(name =>
 				this.definitions[name] =statement

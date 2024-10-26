@@ -8,7 +8,6 @@ export default async function rainbowUp(options: rainbowOptions) {
       // create a dependencies graph
       let graph = new Graph(options);
       let statements =  await graph.createModuleGraph()
-      console.log("statements",statements);
       return {
             generate: (options:Record<string,unknown>) => generateCode( options ,statements),
             write: () => {
