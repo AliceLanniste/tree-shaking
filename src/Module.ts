@@ -15,16 +15,16 @@ import MagicString from "magic-string";
 import { analyseAST } from "./utils/helper";
 
 export class Module {
-	private code: string;
-    private statements:Statement[] | null = null;
-	private comments:Comment[] =[];
-	private magicCode:MagicString;
+	code: string;
+     statements:Statement[] =[];
+      comments:Comment[] =[];
+	 magicCode:MagicString;
     ast:Program;
 	dependencies:string[] =[];
 	imports: Record<string,moduleImport> = {};
 	exports: Record<string,unknown> ={};
-    definitions:Record<string,Node> = {};
-	modifications:Record<string,Node> = {}
+    definitions:Record<string,Statement> = {};
+	modifications:Record<string,Statement> = {}
 
     constructor(
         private readonly graph: Graph,
@@ -75,11 +75,11 @@ export class Module {
 		const {ast,scope ,topLevelStatements}= analyseAST(this.ast,this.magicCode)
 		topLevelStatements.forEach(statement =>{
 			Object.keys(statement.defines).forEach(name =>
-				this.definitions[name] =statement.node
+				this.definitions[name] =statement
 			)
 
 			Object.keys(statement.modifies).forEach(name =>
-				this.modifications[name] = statement.node
+				this.modifications[name] = statement
 			)
 		}
 			
@@ -173,15 +173,15 @@ export class Module {
 	}
     
 
-	expandStatement( name: string) {
+	expandStatement( name: string):Statement[] {
       let declStatement = this.definitions[name]
-	
-	  if(declStatement) {
-		let nodes:Node[] =[]
-		
+	  let nodes:Statement[] =[]
+	  if(declStatement) {	
 		nodes.push(declStatement)
-		return nodes;
+		
 	  }
+
+	  return nodes;
 	}
 
 }

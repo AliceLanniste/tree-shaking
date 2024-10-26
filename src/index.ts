@@ -1,14 +1,14 @@
 
 import { type rainbowOptions } from "./types/options";
 import { Graph } from "./Graph";
-import { generate } from "escodegen";
-import  { Node } from "acorn";
+import  * as magicString from "magic-string";
+import { Statement } from "./node/Statement";
 
 export default async function rainbowUp(options: rainbowOptions) {
       // create a dependencies graph
       let graph = new Graph(options);
       let statements =  await graph.createModuleGraph()
-   
+      console.log("statements",statements);
       return {
             generate: (options:Record<string,unknown>) => generateCode( options ,statements),
             write: () => {
@@ -20,12 +20,15 @@ export default async function rainbowUp(options: rainbowOptions) {
 }
 
 
-function generateCode( options:Record<string, unknown>={}, program:Node[]) {
+function generateCode( options:Record<string, unknown>={}, program:Statement[]) {
+      const bundler =  new magicString.Bundle();
+      program.forEach( statement => {
+            console.log('statement',statement.source.toString())
+            bundler.addSource( statement.source );
+      });
+      
       return {
-            code: generate({
-                  type: 'Program',
-                  body: program
-            }),
-            map: null 
-      }
+            code: bundler.toString(),
+            map: null // TODO use bundle.generateMap()
+      };
 }

@@ -10,7 +10,8 @@ export class Statement {
    dependOn: Record<string,any>;
    type: string;
    scope: Scope;
-   
+   source: MagicString;
+
     constructor(node:Node,
         // private readonly module: Module,
         // private readonly index: number,
@@ -26,6 +27,7 @@ export class Statement {
        this.modifies = modifies;
        this.dependOn = dependOn;
        this.type = this.node.type;
+       this.source = magicString;
     }
 
     isImportDeclartion(): boolean {

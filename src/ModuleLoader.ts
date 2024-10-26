@@ -6,9 +6,10 @@ import { Graph } from "./Graph";
 import { error } from "console";
 import { ErrCode } from "./error";
 import {  Node } from "acorn";
+import { Statement } from "./node/Statement";
 
 export class ModuleLoader {
-     bodyStatement:Node[] = [];
+     bodyStatement:Statement[] = [];
      constructor(
         private readonly graph: Graph,
         private readonly modulesById: Map<string, Module>,
@@ -83,9 +84,9 @@ export class ModuleLoader {
                     })
                 }
             ).then(() => 
-                entryModule.ast.body.forEach((node) => {
-                            if ( !/^(?:Im|Ex)port/.test( node.type ) ){
-                                this.bodyStatement.push(node)
+                entryModule.statements.forEach((statement) => {
+                            if ( !/^(?:Im|Ex)port/.test( statement.node.type ) ){
+                                this.bodyStatement.push(statement)
                             }
                         }) 
             )

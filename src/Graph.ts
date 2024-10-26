@@ -1,8 +1,8 @@
 import { Module } from "./Module";
 import { ModuleLoader } from "./ModuleLoader";
+import { Statement } from "./node/Statement";
 import { type rainbowOptions } from "./types";
 import { normalizeModules } from "./utils/utils";
-import { Node } from "acorn";
 export class Graph {
     readonly moduleLoader:ModuleLoader;
     readonly modulesById = new Map<string, Module>();
@@ -13,11 +13,11 @@ export class Graph {
 
     } 
 
-    async createModuleGraph():Promise<Node[]> {
+    async createModuleGraph():Promise<Statement[]> {
        return await this.generateModuleGraph()
     }
 
-    async generateModuleGraph():Promise<Node[]> {
+    async generateModuleGraph():Promise<Statement[]> {
        let moduleLoader = await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
         return moduleLoader.bodyStatement;
     }
