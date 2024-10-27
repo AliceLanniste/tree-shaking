@@ -6,6 +6,7 @@ import { normalizeModules } from "./utils/utils";
 export class Graph {
     readonly moduleLoader:ModuleLoader;
     readonly modulesById = new Map<string, Module>();
+    names: Record<string, any> = {};
     constructor(
         private readonly options: rainbowOptions,
     ) {
@@ -21,5 +22,12 @@ export class Graph {
        let moduleLoader = await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
         return moduleLoader.bodyStatement;
     }
+    
+    storeNames(name:string, localName:string) {
+        
+    }
 
+    getName(name: string) {
+        
+    }    
 }
