@@ -38,8 +38,12 @@ export async function resolveId(unresolveId: string,	importer: string | undefine
 ): Promise<ResolveResult> {
     //skip external module
     if(importer !== undefined && !isAbsolute(unresolveId) && unresolveId[0] !== '.') return null;
-    return await addJSExtension( importer ? resolve(dirname(importer), unresolveId) : resolve(unresolveId)
-    )
+    const resolvedId = await addJSExtension( importer ? resolve(dirname(importer), unresolveId) : resolve(unresolveId))
+    return {
+        resolvedId,
+        path:unresolveId
+   }     
+    
 }
 
 //js,cjs,mjs

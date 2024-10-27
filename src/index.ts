@@ -22,7 +22,6 @@ export default async function rainbowUp(options: rainbowOptions) {
 function generateCode( options:Record<string, unknown>={}, program:Statement[]) {
       const bundler =  new magicString.Bundle();
       program.forEach( statement => {
-            console.log('statement',statement.source.toString())
             bundler.addSource( statement.source );
       });
       

@@ -37,5 +37,12 @@ export interface ResolvedId extends ModuleOptions {
 	resolvedBy: string;
 }
 
-export type ResolveResult = string | null;
+export type ResolveResult = {
+    resolvedId: string,
+    path: string
+} | null
 
+
+export interface ImportDeclarationType {
+    
+}

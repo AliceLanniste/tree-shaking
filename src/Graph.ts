@@ -19,15 +19,30 @@ export class Graph {
     }
 
     async generateModuleGraph():Promise<Statement[]> {
-       let moduleLoader = await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
+        let moduleLoader = await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
         return moduleLoader.bodyStatement;
     }
     
-    storeNames(name:string, localName:string) {
+    storeNames(module:Module,name:string, localName:string) {
+        if (!(module.id in this.names)) {
+            this.names[module.id] = {}
+        }
+        const moudleNames = this.names[module.id] 
         
+
+        moudleNames[name] = localName
     }
 
-    getName(name: string) {
+    getName(module:Module,name: string) {
+        if (!(module.id in this.names)) {
+            this.names[module.id] = {}
+        }
+
+        const moudleNames = this.names[module.id]
+        if (!moudleNames) {
+            throw new Error( `Could not get name for ${module.id}:${name}` );
+        }
         
+        return moudleNames[name];
     }    
 }

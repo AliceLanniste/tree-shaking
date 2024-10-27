@@ -22,13 +22,14 @@ export class Module {
     ast:Program;
 	dependencies:string[] =[];
 	imports: Record<string,moduleImport> = {};
-	exports: Record<string,unknown> ={};
+	exports: Record<string, any> ={};
     definitions:Record<string,Statement> = {};
-	modifications:Record<string,Statement> = {}
-
+	modifications: Record<string, Statement> = {};
+		
     constructor(
         private readonly graph: Graph,
 		public readonly id: string,
+		public readonly path: string,
 		private readonly options: rainbowOptions,
 		isEntry: boolean,
 		) {
@@ -73,7 +74,7 @@ export class Module {
 			if (statement.isExportDeclartion()) this.addExport(statement)
 		 }); 
 		const {ast,scope ,topLevelStatements}= analyseAST(this.ast,this.magicCode)
-		
+
 		topLevelStatements.forEach(statement =>{
 			Object.keys(statement.defines).forEach(name =>
 				this.definitions[name] =statement
@@ -107,7 +108,7 @@ export class Module {
 					}) 
 				}
 		
-			this.imports[localName] = {
+			this.imports[name] = {
 				importee,
 				name,
 				localName,
@@ -122,13 +123,12 @@ export class Module {
 		const exportNameDecl = exportDecl as ExportNamedDeclaration;
 
 		if (exportDefaultDecl.type == 'ExportDefaultDeclaration') {
-			const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
+			// const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
 
-			 this.exports['default'] = {
-				statement,
-				name:'default',
-				localName: isDeclaration ? (exportDefaultDecl.declaration as FunctionDeclaration).id.name :'default',
-				isDeclaration,
+			 this.exports['Default'] = {
+				node:statement.node,
+				localName: 'Default',
+				isDeclaration: false,
 			 }
 		} else if(exportNameDecl.type == 'ExportNamedDeclaration') {
 				if (exportNameDecl.specifiers.length) {
@@ -175,13 +175,31 @@ export class Module {
     
 
 	expandStatement( name: string):Statement[] {
-      let declStatement = this.definitions[name]
-	  let nodes:Statement[] =[]
-	  if(declStatement) {	
-		nodes.push(declStatement)
-		
-	  }
+		let statement:Statement;
+		if(name ==='Default') {
+			const exportDeclaration = this.exports['Default']
+			if (exportDeclaration.isDeclaration) {
+				// TODO
+				// return this.expandStatement()
+			}
+	
+			const name = this.graph.getName(this, 'Default');
+			let exportDefaultNode = exportDeclaration.node
+			let statementMagicString = this.magicCode.overwrite(
+				exportDefaultNode.start, exportDefaultNode.declaration.start,
+			`var ${name} = `)
+		   statement = new Statement(exportDefaultNode,statementMagicString)
+		} 
+		else {
+			statement = this.definitions[name]
+		 }
 
+		let nodes: Statement[] = []
+
+		if (statement) {	
+		  
+		nodes.push(statement)
+	  }
 	  return nodes;
 	}
 

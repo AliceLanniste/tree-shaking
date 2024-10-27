@@ -1,11 +1,10 @@
-import { ResolveResult, type rainbowOptions } from "./types/options";
+import { ResolveResult, type rainbowOptions } from './types/options';
 import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
 import {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
 import { Graph } from "./Graph";
 import { error } from "console";
 import { ErrCode } from "./error";
-import {  Node } from "acorn";
 import { Statement } from "./node/Statement";
 
 export class ModuleLoader {
@@ -36,6 +35,7 @@ export class ModuleLoader {
         if (resolveResult === null) {
              error()
         }
+
         return this.fetchModule(
                 resolveResult,
                 undefined,
@@ -44,11 +44,12 @@ export class ModuleLoader {
 
     }
   
-    private async fetchModule(id: ResolveResult,
+    private async fetchModule(resolvedResult: ResolveResult,
 		importer: string | undefined,
         isEntry: boolean =false
-		):Promise<Module> {
-        id = id as string;
+    ): Promise<Module> {
+        if (!resolvedResult) { throw error() } 
+        const { resolvedId:id, path } = resolvedResult;
          const existingModule = this.modulesById.get(id);
          if(existingModule) {
             return existingModule;
@@ -56,32 +57,34 @@ export class ModuleLoader {
         
 		const module = new Module(
 			this.graph,
-			id,
+            id,
+            path,
 			this.options,
 			isEntry,
 		
 		);
 		this.modulesById.set(id, module);
-
+        
        const sourceObject = await this.loadModuleSource(id,importer)
        if (sourceObject) {
-        module.setSource(sourceObject);
+           module.setSource(sourceObject);
         await this.fetchAllDependencies(module);
        }
         return module;
     }
 
 
-    private  async fetchAllDependencies(entryModule:Module) {
-    
+    private async fetchAllDependencies(entryModule: Module) {
      await sequence(Object.entries(entryModule.imports), ([name, importObj])=> {
                return this.loadModule(importObj.importee!,false,entryModule.id)
-                    .then(module => {
-                        
+                   .then(module => {
+                       const importDeclaration = entryModule.imports[name];
+                       const exportDeclaration = module.exports[name];
+                        this.graph.storeNames(module, exportDeclaration.localName, importDeclaration.localName!!);
                         let statements = module.expandStatement(name) || [];
-                        
-                         this.bodyStatement =this.bodyStatement.concat.apply(statements)
-                    })
+                         this.bodyStatement =this.bodyStatement.concat(statements)
+
+                   })
                 }
             ).then(() => 
                 entryModule.statements.forEach((statement) => {
