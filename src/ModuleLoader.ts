@@ -54,11 +54,11 @@ export class ModuleLoader {
          if(existingModule) {
             return existingModule;
          }
-        
+         
 		const module = new Module(
 			this.graph,
             id,
-            path,
+            // path,
 			this.options,
 			isEntry,
 		

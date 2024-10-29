@@ -13,6 +13,7 @@ import { Comment } from "./node/Comment";
 import { ErrCode, error } from "./error";
 import MagicString from "magic-string";
 import { analyseAST } from "./utils/helper";
+import { relative } from "path";
 
 export class Module {
 	code: string;
@@ -25,16 +26,18 @@ export class Module {
 	exports: Record<string, any> ={};
     definitions:Record<string,Statement> = {};
 	modifications: Record<string, Statement> = {};
-		
+	path: string;
+
     constructor(
         private readonly graph: Graph,
 		public readonly id: string,
-		public readonly path: string,
+		// public readonly path: string,
 		private readonly options: rainbowOptions,
 		isEntry: boolean,
-		) {
-		
-    }
+	) {
+		let base = this.graph.base;
+		this.path = relative(base,id)
+	}
 
 	setSource({code, ast}) {
 		this.code = code
