@@ -7,7 +7,7 @@ export class Statement {
     node: Node;
    defines: Record<string,any>;
    modifies:  Record<string,any>;
-   dependOn: Record<string,any>;
+   dependsOn: Record<string,any>;
    type: string;
    scope: Scope;
    source: MagicString;
@@ -18,14 +18,14 @@ export class Statement {
         magicString:MagicString,
         defines: Record<string,any> ={},
         modifies:  Record<string,any> ={},
-        dependOn: Record<string,any> = {},
+        dependsOn: Record<string,any> = {},
       
 
     ){
        this.node = node;
        this.defines = defines;
        this.modifies = modifies;
-       this.dependOn = dependOn;
+       this.dependsOn = dependsOn;
        this.type = this.node.type;
        this.source = magicString;
     }

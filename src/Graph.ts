@@ -38,7 +38,7 @@ export class Graph {
         let magicCodeString = finaliser(this, magicBundler, options)
         
         return {
-            code: magicCodeString.toString(),
+            code:  magicCodeString ? magicCodeString.toString(): '',
             map: null
         }
     }

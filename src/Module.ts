@@ -27,6 +27,7 @@ export class Module {
     definitions:Record<string,Statement> = {};
 	modifications: Record<string, Statement> = {};
 	path: string;
+	relativePath: string;
 
     constructor(
         private readonly graph: Graph,
@@ -36,7 +37,8 @@ export class Module {
 		isEntry: boolean,
 	) {
 		let base = this.graph.base;
-		this.path = relative(base,id)
+		this.path = relative(base, id)
+		this.relativePath = relative(base,id).slice(0,-3)
 	}
 
 	setSource({code, ast}) {
@@ -126,12 +128,13 @@ export class Module {
 		const exportNameDecl = exportDecl as ExportNamedDeclaration;
 
 		if (exportDefaultDecl.type == 'ExportDefaultDeclaration') {
-			// const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
+			const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
 
 			 this.exports['Default'] = {
 				node:statement.node,
 				localName: 'Default',
-				isDeclaration: false,
+				name: isDeclaration ? exportDefaultDecl.declaration.id.name : null,
+					isDeclaration
 			 }
 		} else if(exportNameDecl.type == 'ExportNamedDeclaration') {
 				if (exportNameDecl.specifiers.length) {

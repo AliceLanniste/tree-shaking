@@ -1,12 +1,11 @@
-import {ClassDeclaration, ClassExpression, Function, FunctionDeclaration, Identifier, Node, VariableDeclaration, VariableDeclarator, type Program} from 'acorn';
+import {CatchClause, ClassDeclaration, ClassExpression, Function, FunctionDeclaration, Identifier, MemberExpression, Node, VariableDeclaration, VariableDeclarator, type Program} from 'acorn';
 import Scope from './scope';
 import { getName } from './utils';
 import MagicString from 'magic-string';
 import { Statement } from '../node/Statement';
+import { walk } from './walk';
 
-type walkFunc = { enter: ((node:Node) => void) | null,leave:((node:Node)=>void) | null};
-let shouldSkip:boolean =false;
-let shouldAbort: boolean = false;
+
 
 interface analysedAST {
     ast: Program,
@@ -57,7 +56,7 @@ export function analyseAST(ast: Program, code: MagicString) {
             currentTopStatement = statement;
             topLevelStatements.push(statement);
             const {type} = statement;
-            
+           let newScope: Scope| null =null;
             switch(type) {
 				case 'FunctionDeclaration':
 				case 'ArrowFunctionExpression':
@@ -71,20 +70,29 @@ export function analyseAST(ast: Program, code: MagicString) {
 
                         names.push(functionNode.id.name)
                     }
-                    scope = statement.scope = new Scope({
+                   newScope = new Scope({
                         parent: scope,
-						params: names, 
+						names: names, 
 						isBlockScope: false
                     })
                     break
 
                 case 'BlockStatement':
-                    scope = statement.scope = new Scope({
+                   newScope = new Scope({
                         parent:scope,
                         isBlockScope:true
                     })     
                 
-                break;
+                    break;
+                case 'CatchClause':
+                    let catchNode = node as CatchClause;
+						newScope = new Scope({
+							parent: scope,
+							names: [ catchNode.param.name ],
+							isBlockScope: true
+						});
+
+						break;
 
                 case 'VariableDeclaration':
                     let variableDeclNode = statement.node as VariableDeclaration;
@@ -102,6 +110,11 @@ export function analyseAST(ast: Program, code: MagicString) {
                     addToScope(classExprNode);
                     break;
             }
+           
+           if (newScope) {
+               statement.scope = newScope
+               scope = newScope
+             }
         },
 
         leave(node) {
@@ -121,52 +134,56 @@ export function analyseAST(ast: Program, code: MagicString) {
 
       }
    })
+    
+    
+    topLevelStatements.forEach(statement => {
+        let node = statement.node
+        function checkForReads(node:Node,parent:Node) {
+            if (node.type === 'Identifier') {
+                if (parent && parent.type === 'MemberExpression' && node !== (parent as MemberExpression).object) {
+                     return
+                }
+                let identifier=  node as Identifier
+                const definingScope = scope!.findDefiningScope(identifier.name)
+
+                if ( ( !definingScope || definingScope.depth === 0 ) && !statement.defines[ identifier.name ] ) {
+					statement.dependsOn[ identifier.name ] = true;
+				}
+                
+             }
+        }
+
+        function checkForWrites(node: Node, parent: Node) {
+            
+        }
+
+        walk(node, {
+            enter(node,parent) {
+                       // skip imports
+				if ( /^Import/.test( node.type ) ) return this.skip();
+
+				if ( statement.scope ) scope = statement.scope;
+
+				checkForReads( node, parent );
+				checkForWrites( node, parent );
+
+
+                    },
+
+                    leave(node) {
+                        if (statement.scope) scope = scope!.parent;
+                    },
+        })
+    })
+    
  
    return {
     ast,
-   scope,
+    scope,
    topLevelStatements
    }
 }
 
-
-//iterate vist AST Node
-export function walk(ast:Node,walkFunc:walkFunc) {
-    shouldSkip = false;
-    visit(ast,null,  walkFunc);
-
-}
-
-function visit(ast:Node,parent:Node |null, walkFunc: walkFunc) {
-    if(!ast || shouldAbort) return;
-
-    if(walkFunc.enter) {
-        shouldSkip = false
-       walkFunc.enter(ast);
-    }
-
-    let keys = Object.keys(ast).filter(key => typeof ast[key] === 'object');
-
-    let i = keys.length;
-    let j:number = -1;
-    while (i--) {
-        let key = keys[i];
-        let node = ast[key];
-        if(Array.isArray(node)) {
-            j= node.length;
-            while (j--) {
-                visit(node[j],ast,walkFunc);
-            }
-        } else if(node && node.type) {
-            visit(node,ast,walkFunc);
-        }
-    }
-
-
-    if (walkFunc.leave && !shouldAbort) {
-         walkFunc.leave(ast);
-    }
-}
 
 
 function isStatement(node:Node):boolean {
