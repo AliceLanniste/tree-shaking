@@ -3,7 +3,9 @@ import { ModuleLoader } from "./ModuleLoader";
 import { Statement } from "./node/Statement";
 import { type rainbowOptions } from "./types";
 import { normalizeModules } from "./utils/utils";
-import { relative, sep } from 'path';
+import { sep } from 'path';
+import * as magicString from "magic-string";
+import  finalisers from './finalisers/index'
 export class Graph {
     readonly moduleLoader:ModuleLoader;
     readonly modulesById = new Map<string, Module>();
@@ -24,6 +26,21 @@ export class Graph {
     async generateModuleGraph():Promise<Statement[]> {
         let moduleLoader = await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
         return moduleLoader.bodyStatement;
+    }
+
+    async generate(options: any) {
+        const magicBundler = new magicString.Bundle();
+        let moduleStatements = await this.generateModuleGraph()
+        moduleStatements.forEach(statement => {
+            magicBundler.addSource(statement.source)
+        })
+        let finaliser = finalisers[options.format || 'es6']
+        let magicCodeString = finaliser(this, magicBundler, options)
+        
+        return {
+            code: magicCodeString.toString(),
+            map: null
+        }
     }
     
     storeNames(module:Module,exportedName:string, importName:string) {
