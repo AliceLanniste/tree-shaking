@@ -1,7 +1,13 @@
+import { VariableDeclaration, VariableDeclarator } from 'acorn';
 type scopeOptionType = {
     parent:Scope |null,
     params?:string[],
     isBlockScope?:boolean,
+}
+
+const isBlockType = {
+    'let': true,
+     'const': true
 }
 
 export default class Scope {
@@ -9,12 +15,28 @@ export default class Scope {
     parent: Scope | null;
     isBlockScope:boolean ;
     options:scopeOptionType;
+    varDeclarations: string[] = [];
+    declarations: Record<string, string[]>;
 
     constructor(options:scopeOptionType = {parent:null}) {
         this.options =options;
         this.parent = this.options.parent;
         this.params = this.options.params || [];
         this.isBlockScope = this.options.isBlockScope || false;
+        //TODO:
+        // if (options.params) {
+            
+        // }
+    
+    }
+
+    addDeclaration(name:string,declaration:VariableDeclaration, isVar) {
+        const isBlockScope = declaration.type === 'VariableDeclaration' && isBlockType[name]
+        if (isBlockScope) {
+            //TODO
+        } else {
+              if ( isVar ) this.varDeclarations.push( name )
+        }
     }
 
     add(name:string, isBlockDeclaration:boolean) {

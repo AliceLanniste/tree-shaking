@@ -72,8 +72,11 @@ export class ModuleLoader {
        }
         return module;
     }
-
-
+     
+    //name from  importerModule.imports
+    //  importeeModule.expandStatement(name)
+    // it may be defined in importeeModule or differenet Module
+    //so it
     private async fetchAllDependencies(entryModule: Module) {
      await sequence(Object.entries(entryModule.imports), ([name, importObj])=> {
                return this.loadModule(importObj.importee!,false,entryModule.id)
