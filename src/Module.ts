@@ -25,7 +25,7 @@ export class Module {
 	exports: Record<string, any> ={};
     definitions:Record<string,Statement> = {};
 	modifications: Record<string, Statement> = {};
-		
+	replacements: Record<string, string> = {};
     constructor(
         private readonly graph: Graph,
 		public readonly id: string,
@@ -71,25 +71,21 @@ export class Module {
 		if(!this.statements) return;
          this.statements.forEach(statement => {
 			if (statement.isImportDeclartion()) this.addImport(statement)
-			if (statement.isExportDeclartion()) this.addExport(statement)
+			else if (statement.isExportDeclartion()) this.addExport(statement)
+			 statement.analyse()
+			 Object.keys(statement.defines).forEach(name => {
+				 this.definitions[name] =statement
+			 })
+			  Object.keys(statement.modifies).forEach(name => {
+				 this.modifications[name] =statement
+			 })
+			 
 		 }); 
-		const {ast,scope ,topLevelStatements}= analyseAST(this.ast,this.magicCode)
-
-		topLevelStatements.forEach(statement =>{
-			Object.keys(statement.defines).forEach(name =>
-				this.definitions[name] =statement
-			)
-
-			Object.keys(statement.modifies).forEach(name =>
-				this.modifications[name] = statement
-			)
-		}
-			
-		)
+		
 	}
 
 	addImport(statement: Statement) {
-		const node = statement.node as ImportDeclaration;
+		const node = statement.scopeNode.node as ImportDeclaration;
 		const importee = node.source.value as string;
 		if (!this.dependencies.indexOf(importee)) this.dependencies.push(importee)
 		// check type of importDeclaration:ImportDefaultSpecifer,ImportSpecifer,ImportNamespaceSpecifer
@@ -117,7 +113,7 @@ export class Module {
 	}
 
 	addExport(statement: Statement) {
-		const exportDecl = statement.node as any;
+		const exportDecl = statement.scopeNode.node as any;
 		const source = exportDecl.source && exportDecl.source.value;
 		const exportDefaultDecl = exportDecl as ExportDefaultDeclaration;
 		const exportNameDecl = exportDecl as ExportNamedDeclaration;
@@ -126,7 +122,7 @@ export class Module {
 			// const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
 
 			 this.exports['Default'] = {
-				node:statement.node,
+				node:statement.scopeNode.node,
 				localName: 'Default',
 				isDeclaration: false,
 			 }
@@ -192,10 +188,15 @@ export class Module {
 		} 
 		else {
 			statement = this.definitions[name]
+			statement.replacedIdentifier(this.replacements);
+			if (statement.isExportDeclartion()) {
+				statement.source.remove(statement.scopeNode.node.start, statement.scopeNode.node.declaration.start);
+			}
+			
 		 }
 
 		let nodes: Statement[] = []
-
+ 
 		if (statement) {	
 		  
 		nodes.push(statement)

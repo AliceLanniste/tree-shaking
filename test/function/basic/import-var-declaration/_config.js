@@ -1,3 +1,3 @@
 module.exports = {
-	description: 'imports a variable declaration'
+	description: 'imports a variable declaration',
 };

@@ -1,3 +1,3 @@
 module.exports = {
-	description: 'imports a named function'
+	description: 'imports a named function',
 };

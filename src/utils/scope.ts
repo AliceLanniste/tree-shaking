@@ -16,7 +16,7 @@ export default class Scope {
     isBlockScope:boolean ;
     options:scopeOptionType;
     varDeclarations: string[] = [];
-    declarations: Record<string, string[]>;
+    declarations: Record<string, string[]> = {};
 
     constructor(options:scopeOptionType = {parent:null}) {
         this.options =options;
@@ -30,12 +30,18 @@ export default class Scope {
     
     }
 
-    addDeclaration(name:string,declaration:VariableDeclaration, isVar) {
+    addDeclaration(name:string,declaration:any, isVar:boolean) {
         const isBlockScope = declaration.type === 'VariableDeclaration' && isBlockType[name]
         if (isBlockScope) {
             //TODO
+          this.parent &&  this.parent.addDeclaration( name, declaration, isVar );
         } else {
-              if ( isVar ) this.varDeclarations.push( name )
+            if (isVar) {
+                this.declarations[ name ] = declaration;
+                this.varDeclarations.push(name);
+            } else {
+                this.declarations[ name ] = declaration;
+            }
         }
     }
 
@@ -55,3 +61,5 @@ export default class Scope {
         return false;
     }
 }
+
+export const NULLScope = new Scope();

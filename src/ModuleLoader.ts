@@ -83,15 +83,17 @@ export class ModuleLoader {
                    .then(module => {
                        const importDeclaration = entryModule.imports[name];
                        const exportDeclaration = module.exports[name];
+                       module.replacements[exportDeclaration.localName] = importDeclaration.localName!!;
                         this.graph.storeNames(module, exportDeclaration.localName, importDeclaration.localName!!);
-                        let statements = module.expandStatement(name) || [];
+                     
+                       let statements = module.expandStatement(name) || [];
                          this.bodyStatement =this.bodyStatement.concat(statements)
 
                    })
                 }
             ).then(() => 
                 entryModule.statements.forEach((statement) => {
-                            if ( !/^(?:Im|Ex)port/.test( statement.node.type ) ){
+                            if ( !/^(?:Im|Ex)port/.test( statement.scopeNode.node.type ) ){
                                 this.bodyStatement.push(statement)
                             }
                         }) 
