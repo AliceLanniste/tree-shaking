@@ -3,16 +3,13 @@ import { Statement } from './node/Statement';
 import { moduleImport, rainbowOptions } from "./types";
 import { ExportDefaultDeclaration, 
 		ExportNamedDeclaration, 
-		FunctionDeclaration, 
 		Identifier,
 		ImportDeclaration, 
 		parse, 
-		Node,
 		Program } from "acorn";
 import { Comment } from "./node/Comment";
 import { ErrCode, error } from "./error";
 import MagicString from "magic-string";
-import { analyseAST } from "./utils/helper";
 
 export class Module {
 	code: string;
