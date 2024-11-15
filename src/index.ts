@@ -7,9 +7,10 @@ import { Statement } from "./node/Statement";
 export default async function rainbowUp(options: rainbowOptions) {
       // create a dependencies graph
       let graph = new Graph(options);
-      let statements =  await graph.createModuleGraph()
+      let moduleLoader = await graph.createModuleGraph()
+      let statements = moduleLoader.bodyStatement;
       return {
-            generate: (options:Record<string,unknown>) => generateCode( options ,statements),
+            generate: (options:Record<string,unknown>) => generateCode( options ,statements,moduleLoader.bodyString),
             write: () => {
                   throw new Error( 'TODO' );
             }
@@ -19,14 +20,10 @@ export default async function rainbowUp(options: rainbowOptions) {
 }
 
 
-function generateCode( options:Record<string, unknown>={}, program:Statement[]) {
+function generateCode( options:Record<string, unknown>={}, program:Statement[],strings:string[]) {
       const bundler =  new magicString.Bundle();
-      program.forEach( statement => {
-            bundler.addSource( statement.source );
-      });
-      
       return {
-            code: bundler.toString(),
+            code:strings.join("\n"),
             map: null // TODO use bundle.generateMap()
       };
 }

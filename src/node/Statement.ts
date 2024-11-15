@@ -119,7 +119,7 @@ export class Statement {
 		});
   }
   replacedIdentifier(names: Record<string, string>) {
-    const replacementStack = [names];
+    const replacementStack = [names]
     let keys = Object.keys(names)
     if (keys.length === 0) {
       return;
@@ -145,8 +145,10 @@ export class Statement {
           let name = (scopeNode.node as Identifier).name;
           
           if (Object.hasOwn(names, name) && name !== names[name]) {
-              name = names[name]
+            name = names[name]
+            
           }
+        
           that.source.overwrite(scopeNode.node.start, scopeNode.node.end, name);
         }
       },

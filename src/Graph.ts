@@ -14,13 +14,13 @@ export class Graph {
 
     } 
 
-    async createModuleGraph():Promise<Statement[]> {
+    async createModuleGraph():Promise<ModuleLoader> {
        return await this.generateModuleGraph()
     }
 
-    async generateModuleGraph():Promise<Statement[]> {
+    async generateModuleGraph():Promise<ModuleLoader> {
         let moduleLoader = await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
-        return moduleLoader.bodyStatement;
+        return moduleLoader;
     }
     
     storeNames(module:Module,name:string, localName:string) {
@@ -45,4 +45,18 @@ export class Graph {
         
         return moudleNames[name];
     }    
+
+    getReplacements(module: Module) {
+         if (!(module.id in this.names)) {
+            this.names[module.id] = {}
+        }
+
+        const moudleNames = this.names[module.id]
+         if (!moudleNames) {
+            throw new Error( `Could not get name for ${module.id}:${name}` );
+         }
+        
+        return moudleNames
+        
+    }
 }

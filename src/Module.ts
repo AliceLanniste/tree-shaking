@@ -167,7 +167,7 @@ export class Module {
 	}
     
 
-	expandStatement( name: string):Statement[] {
+	expandStatement( name: string):Statement {
 		let statement:Statement;
 		if(name ==='Default') {
 			const exportDeclaration = this.exports['Default']
@@ -185,20 +185,16 @@ export class Module {
 		} 
 		else {
 			statement = this.definitions[name]
-			statement.replacedIdentifier(this.replacements);
+			// console.log("statement,", name, statement.source.toString());
+			let replacements = this.graph.getReplacements(this);
+			statement.replacedIdentifier(replacements);
 			if (statement.isExportDeclartion()) {
 				statement.source.remove(statement.scopeNode.node.start, statement.scopeNode.node.declaration.start);
 			}
 			
 		 }
 
-		let nodes: Statement[] = []
- 
-		if (statement) {	
-		  
-		nodes.push(statement)
-	  }
-	  return nodes;
+	  return statement;
 	}
 
 }

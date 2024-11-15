@@ -3,12 +3,13 @@ import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
 import {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
 import { Graph } from "./Graph";
-import { error } from "console";
+import { Console, error } from "console";
 import { ErrCode } from "./error";
 import { Statement } from "./node/Statement";
 
 export class ModuleLoader {
-     bodyStatement:Statement[] = [];
+    bodyStatement: Statement[] = [];
+    bodyString: string[] = [];
      constructor(
         private readonly graph: Graph,
         private readonly modulesById: Map<string, Module>,
@@ -22,7 +23,7 @@ export class ModuleLoader {
                                this.loadModule(id,true,importer)))
         if (entryModules.length === 0) {
 			throw new Error('You must supply options.input to rollup');
-		}
+        }
         return this;
     }
 
@@ -78,25 +79,33 @@ export class ModuleLoader {
     // it may be defined in importeeModule or differenet Module
     //so it
     private async fetchAllDependencies(entryModule: Module) {
-     await sequence(Object.entries(entryModule.imports), ([name, importObj])=> {
-               return this.loadModule(importObj.importee!,false,entryModule.id)
-                   .then(module => {
-                       const importDeclaration = entryModule.imports[name];
-                       const exportDeclaration = module.exports[name];
-                       module.replacements[exportDeclaration.localName] = importDeclaration.localName!!;
-                        this.graph.storeNames(module, exportDeclaration.localName, importDeclaration.localName!!);
+        await sequence(Object.entries(entryModule.imports), ([name, importObj]) => {
+            return this.loadModule(importObj.importee!, false, entryModule.id)
+                .then(module => {
+                    const importDeclaration = entryModule.imports[name];
+                    const exportDeclaration = module.exports[name];
+                    module.replacements[exportDeclaration.localName] = importDeclaration.localName!!;
+                      
+                    this.graph.storeNames(module, exportDeclaration.localName, importDeclaration.localName!!);
                      
-                       let statements = module.expandStatement(name) || [];
-                         this.bodyStatement =this.bodyStatement.concat(statements)
-
-                   })
+                    let statements = module.expandStatement(name) || '';
+                    
+                    return statements;
+                }).then((stmt) => {
+                  
+                    this.bodyStatement.push(stmt)
+                    this.bodyString.push(stmt.source.toString())
+                })
+        })  
+            .then(() => {
+  
+            entryModule.statements.forEach((statement) => {
+                if (!/^(?:Im|Ex)port/.test(statement.scopeNode.node.type)) {
+                    this.bodyStatement.push(statement)
+                    this.bodyString.push(statement.source.toString())
                 }
-            ).then(() => 
-                entryModule.statements.forEach((statement) => {
-                            if ( !/^(?:Im|Ex)port/.test( statement.scopeNode.node.type ) ){
-                                this.bodyStatement.push(statement)
-                            }
-                        }) 
+            })
+        }
             )
 
     }
