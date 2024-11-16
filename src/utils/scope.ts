@@ -1,7 +1,7 @@
-import { VariableDeclaration, VariableDeclarator } from 'acorn';
+import { Identifier, VariableDeclaration, VariableDeclarator,Node } from 'acorn';
 type scopeOptionType = {
     parent:Scope |null,
-    params?:string[],
+    params?:Identifier[],
     isBlockScope?:boolean,
 }
 
@@ -11,29 +11,28 @@ const isBlockType = {
 }
 
 export default class Scope {
-    params: string[];
     parent: Scope | null;
     isBlockScope:boolean ;
     options:scopeOptionType;
     varDeclarations: string[] = [];
-    declarations: Record<string, string[]> = {};
+    declarations: Record<string, Node> = {};
+    depth: number;
 
     constructor(options:scopeOptionType = {parent:null}) {
         this.options =options;
         this.parent = this.options.parent;
-        this.params = this.options.params || [];
         this.isBlockScope = this.options.isBlockScope || false;
-        //TODO:
-        // if (options.params) {
-            
-        // }
-    
+        this.depth = this.parent ? this.parent.depth + 1 : 0
+        
+        if (options.params) {
+            options.params.forEach(param => this.declarations[param.name] = param)
+        }
+     
     }
 
     addDeclaration(name:string,declaration:any, isVar:boolean) {
         const isBlockScope = declaration.type === 'VariableDeclaration' && isBlockType[name]
         if (isBlockScope) {
-            //TODO
           this.parent &&  this.parent.addDeclaration( name, declaration, isVar );
         } else {
             if (isVar) {
@@ -45,20 +44,24 @@ export default class Scope {
         }
     }
 
-    add(name:string, isBlockDeclaration:boolean) {
-        if(this.isBlockScope && !isBlockDeclaration && this.parent) {
-            this.parent.add(name,isBlockDeclaration);
-        } else {
-            this.params.push(name);
-        }
+    contains(name:string):boolean {
+        return !!this.getDeclaration(name)
     }
 
-    contains(name:string):boolean {
-        if(this.params.includes(name)) return true;
+    findDefineScope(name: string): Scope | null {
+        if (this.declarations[name]) return this;
+        if (this.parent) {
+            return this.parent.findDefineScope(name)
+        }
+        return null;
+    }
 
-        if (this.parent) return this.parent.contains(name);
-
-        return false;
+    getDeclaration(name: string): Node | null {
+        if (this.declarations[name]) return this.declarations[name]
+        if (this.parent) {
+            return this.parent.declarations[name]
+        }
+        return null
     }
 }
 
