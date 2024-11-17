@@ -1,26 +1,26 @@
+import  * as MagicString from "magic-string";
 import { Module } from "./Module";
 import { ModuleLoader } from "./ModuleLoader";
-import { Statement } from "./node/Statement";
 import { type rainbowOptions } from "./types";
 import { normalizeModules } from "./utils/utils";
 export class Graph {
     readonly moduleLoader:ModuleLoader;
-    readonly modulesById = new Map<string, Module>();
+    modulesById:Record<string, Module> = {};
     names: Record<string, any> = {};
     constructor(
         private readonly options: rainbowOptions,
     ) {
-        this.moduleLoader = new ModuleLoader(this,this.modulesById,options);        
+        this.moduleLoader = new ModuleLoader(this,options);        
 
     } 
 
-    async createModuleGraph():Promise<ModuleLoader> {
-       return await this.generateModuleGraph()
+     createModuleGraph(){ 
+       return this.generateModuleGraph()
     }
 
-    async generateModuleGraph():Promise<ModuleLoader> {
-        let moduleLoader = await this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
-        return moduleLoader;
+    generateModuleGraph() {
+        return this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
+        
     }
     
     storeNames(module:Module,name:string, localName:string) {
@@ -58,5 +58,20 @@ export class Graph {
         
         return moudleNames
         
+    }
+
+   async render() {
+       let moduleGraph = await this.createModuleGraph()
+       let orderedModules = moduleGraph.render()
+    	let magicString = new MagicString.Bundle({ separator: '\n\n' });
+       orderedModules.forEach(module => {
+			const source = module.render();
+			if ( source.toString().length ) {
+				magicString.addSource( source );
+			}
+        });
+       
+       const code = magicString.toString();
+       return {code}
     }
 }

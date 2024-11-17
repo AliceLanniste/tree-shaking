@@ -1,3 +1,3 @@
 module.exports = {
-	description: 'import binding'
+	description: 'import binding',
 };

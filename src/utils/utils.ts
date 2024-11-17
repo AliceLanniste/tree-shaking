@@ -34,7 +34,7 @@ export function normalizeModules(entryPoints: InputOptions):UnresolvedModule[] {
 
 }
 
-export async function resolveId(unresolveId: string,	importer: string | undefined,
+export async function resolveId(unresolveId: string,importer: string | undefined,
 ): Promise<ResolveResult> {
     //skip external module
     if(importer !== undefined && !isAbsolute(unresolveId) && unresolveId[0] !== '.') return null;

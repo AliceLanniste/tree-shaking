@@ -22,7 +22,7 @@ import { test } from 'vitest';
                          try {
                             let fn = new Function('assert', result.code);
                             fn(assert)
-                            console.log( "success-generate",result.code );
+                            console.log( "success-generate",result );
 
                          } catch (error) {
                             console.log( "error-generate",result.code );

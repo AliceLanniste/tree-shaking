@@ -6,24 +6,30 @@ import { Graph } from "./Graph";
 import { Console, error } from "console";
 import { ErrCode } from "./error";
 import { Statement } from "./node/Statement";
+import { resolve } from 'node:path';
 
 export class ModuleLoader {
     bodyStatement: Statement[] = [];
     bodyString: string[] = [];
+    modules: Module[] = [];
+    ordered: Module[] = [];
+    modulesById:Record<string,Module> = {}
      constructor(
         private readonly graph: Graph,
-        private readonly modulesById: Map<string, Module>,
         private readonly options: rainbowOptions,
      ) {
-
+    
      }
 
     async addEntryModule(unresolveModules:UnresolvedModule[], isUserDefined: boolean) {
         const entryModules = await Promise.all(unresolveModules.map(({id, importer}) => 
-                               this.loadModule(id,true,importer)))
+            this.loadModule(id, true, importer)))
+                
         if (entryModules.length === 0) {
 			throw new Error('You must supply options.input to rollup');
         }
+        entryModules.forEach(entryModule => entryModule.bindingImportSpecifier())
+        this.sorModule()
         return this;
     }
 
@@ -50,63 +56,38 @@ export class ModuleLoader {
         isEntry: boolean =false
     ): Promise<Module> {
         if (!resolvedResult) { throw error() } 
-        const { resolvedId:id, path } = resolvedResult;
-         const existingModule = this.modulesById.get(id);
+        const { resolvedId: id, path } = resolvedResult;
+         const existingModule = this.modulesById[id];
          if(existingModule) {
             return existingModule;
          }
-        
+        const sourceObject = await this.loadModuleSource(id,importer)
 		const module = new Module(
 			this.graph,
             id,
             path,
 			this.options,
 			isEntry,
-		
+            this,
+            sourceObject!.code,
+            sourceObject!.ast,
 		);
-		this.modulesById.set(id, module);
-        
-       const sourceObject = await this.loadModuleSource(id,importer)
-       if (sourceObject) {
-           module.setSource(sourceObject);
-        await this.fetchAllDependencies(module);
-       }
+		this.modulesById[id] = module;
+        this.modules.push(module);
+
+        await this.fetchAllDependencies(module);       
         return module;
     }
      
-    //name from  importerModule.imports
-    //  importeeModule.expandStatement(name)
-    // it may be defined in importeeModule or differenet Module
-    //so it
-    private async fetchAllDependencies(entryModule: Module) {
-        await sequence(Object.entries(entryModule.imports), ([name, importObj]) => {
-            return this.loadModule(importObj.importee!, false, entryModule.id)
-                .then(module => {
-                    const importDeclaration = entryModule.imports[name];
-                    const exportDeclaration = module.exports[name];
-                    module.replacements[exportDeclaration.localName] = importDeclaration.localName!!;
-                      
-                    this.graph.storeNames(module, exportDeclaration.localName, importDeclaration.localName!!);
-                     
-                    let statements = module.expandStatement(name) || '';
-                    
-                    return statements;
-                }).then((stmt) => {
-                  
-                    this.bodyStatement.push(stmt)
-                    this.bodyString.push(stmt.source.toString())
-                })
-        })  
-            .then(() => {
-  
-            entryModule.statements.forEach((statement) => {
-                if (!/^(?:Im|Ex)port/.test(statement.scopeNode.node.type)) {
-                    this.bodyStatement.push(statement)
-                    this.bodyString.push(statement.source.toString())
-                }
-            })
-        }
-            )
+
+    private async fetchAllDependencies(entryModule: Module) {     
+        const dependPromises = entryModule.dependencies.map(async (depend: string) => {
+            let  resolvedResult = await resolveId(depend, entryModule.id);
+             entryModule.resolvedIds[depend] = resolvedResult?.resolvedId ?? ''
+            return await this.loadModule(depend, false, entryModule.id)
+       }
+        ) 
+           return  Promise.all(dependPromises)
 
     }
 
@@ -122,5 +103,20 @@ export class ModuleLoader {
                 }).then((source => {
                     if ( typeof source === 'string' ) return transform(source);
                 }))
+    }
+
+    sorModule() {
+        this.visit(this.modules[0])
+    }
+    visit(module: Module) {
+        const strongDependencies = module.collectDependencies()
+        Object.values(strongDependencies).forEach(depend =>
+            this.visit(depend)
+        )
+        this.ordered.push(module)
+
+    }
+    render() {
+        return this.ordered;
     }
 }

@@ -7,10 +7,13 @@ import { Statement } from "./node/Statement";
 export default async function rainbowUp(options: rainbowOptions) {
       // create a dependencies graph
       let graph = new Graph(options);
-      let moduleLoader = await graph.createModuleGraph()
-      let statements = moduleLoader.bodyStatement;
+
+      let result = await graph.render()
+      // let moduleLoader = await graph.createModuleGraph()
+
+      // let statements = moduleLoader.bodyStatement;
       return {
-            generate: (options:Record<string,unknown>) => generateCode( options ,statements,moduleLoader.bodyString),
+            generate: (options:Record<string,unknown>) => result,
             write: () => {
                   throw new Error( 'TODO' );
             }
