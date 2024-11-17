@@ -221,10 +221,8 @@ export class Module {
 				const module = this.moduleLoader.modulesById[ id ];
 				strongDependencies[ module.id ] = module;
 			} else {
-				console.log("module-collect", statement.strongDependsOn,statement.dependsOn)
 				Object.keys( statement.strongDependsOn ).forEach( name => {
 					if (statement.defines[name] || !this.imports[name]) return;
-					console.log("imports[name]", this.imports[name]);
 					let id = this.resolvedIds[this.imports[name].importee]
 					const module = this.moduleLoader.modulesById[id]
 					strongDependencies[module.id] = module
@@ -252,6 +250,17 @@ export class Module {
 			if (statement.node.type === 'ImportDeclaration') {
 				magicString.remove(statement.start, statement.end)
 				return;
+			}
+			
+			if (statement.isExportDeclartion()) {
+				// remove `export` from `export var foo = 42`
+				if (statement.node.type === 'ExportNamedDeclaration' && statement.node.declaration.type === 'VariableDeclaration') {
+					magicString.remove(statement.node.start, statement.node.declaration.start);
+				}
+				else if ( statement.node.declaration.id ) {
+					magicString.remove( statement.node.start, statement.node.declaration.start );
+				}
+
 			}
 		})
 
