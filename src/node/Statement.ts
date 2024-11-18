@@ -3,6 +3,7 @@ import {Module} from "../Module";
 import Scope, { NULLScope } from '../utils/scope';
 import { ScopeNode } from "../types";
 import walkAST from "../utils/walk";
+import MagicString from "magic-string";
 
 export class Statement {
   node: Node;
@@ -144,7 +145,50 @@ export class Statement {
 			}
         }
   }
+    replacedIdentifiers(magiString: MagicString,names: Record<string, string>) {
+    const replacementStack = [names]
+    let keys = Object.keys(names)
+    if (keys.length === 0) {
+      return;
+    }
+    let that = this
+    walkAST(that.node, {
+      enter(node,parent) {
+        let newNames: Record<string, string> = {}
+        let scope = that.scope;
+        let hasReplacement = false;
+        keys.forEach((key) => {
+            if (scope.declarations[key]) {
+              newNames[key] = names[key]
+              hasReplacement = true
+            }
+        })
+        replacementStack.push(newNames);
+         if (!hasReplacement) {
+           this.skip();
+        }
+       
+        if (node.type === 'Identifier' &&parent&& parent.type !== "MemberExpression") {
+          let name = (node as Identifier).name;
+          
+          if (Object.hasOwn(names, name) && name !== names[name]) {
+            name = names[name]
+            
+          }
+        
+         magiString.overwrite(node.start, node.end, name);
+        }
+      },
 
+      leave(node) {
+        if ( that.scope ) {
+				replacementStack.pop();
+				names = replacementStack[ replacementStack.length - 1 ];
+			}
+      },
+    })
+  }
+  
     isImportDeclartion(): boolean {
       return  this.node.type ==='ImportDeclaration'
     }

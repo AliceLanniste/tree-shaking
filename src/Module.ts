@@ -233,6 +233,12 @@ export class Module {
     
 	markAllStatement(isEntryModule: boolean) {
 		this.statements.forEach(statement => {
+             if (statement.isImportDeclartion()) {
+				 let module = this.getModule(statement.node.source.value)
+					 
+				 module.markAllStatement(false)
+				 }
+
 			//@ts-ignore
 			if (statement.node.type === 'ExportNamedDeclaration' && statement.node.specifiers.length) {
 				 if (isEntryModule)  statement.mark()
@@ -244,16 +250,15 @@ export class Module {
 
 	mark(name: string) {
 		if (this.marked[name]) return
-		this.marked[name] = true
-		
-			console.log("module mark name", name,this.imports);
-		
+		this.marked[name] = true		
 		if (this.imports[name]) {
 			const importDeclaration = this.imports[name];
+			const module = this.getModule(importDeclaration.importee!)
+
 			if (importDeclaration.name === 'Default') {
-				const module = this.getModule(importDeclaration.importee!)
 				module.suggestName(importDeclaration.name, importDeclaration.localName!)
-				console.log("importDefault",importDeclaration.name,importDeclaration.localName)
+			} else {
+				module.suggestName(importDeclaration.name, name);
 			}
 		} 
 		else {
@@ -270,36 +275,6 @@ export class Module {
 
 	}
 
-	// expandStatement( name: string):Statement {
-	// 	let statement:Statement;
-	// 	if(name ==='Default') {
-	// 		const exportDeclaration = this.exports['Default']
-	// 		if (exportDeclaration.isDeclaration) {
-	// 			// TODO
-	// 			// return this.expandStatement()
-	// 		}
-	
-	// 		const name = this.graph.getName(this, 'Default');
-	// 		let exportDefaultNode = exportDeclaration.node
-	// 		let statementMagicString = this.magicCode.overwrite(
-	// 			exportDefaultNode.start, exportDefaultNode.declaration.start,
-	// 		`var ${name} = `)
-	// 	   statement = new Statement(exportDefaultNode,statementMagicString)
-	// 	} 
-	// 	else {
-	// 		statement = this.definitions[name]
-	// 		// console.log("statement,", name, statement.source.toString());
-	// 		let replacements = this.graph.getReplacements(this);
-	// 		statement.replacedIdentifier(replacements);
-	// 		if (statement.isExportDeclartion()) {
-	// 			statement.source.remove(statement.scopeNode.node.start, statement.scopeNode.node.declaration.start);
-	// 		}
-			
-	// 	 }
-
-	//   return statement;
-	// }
-
 	collectDependencies() {
 		let strongDependencies:Record<string, Module> = {};
 		this.statements.forEach((statement) => {
@@ -307,7 +282,7 @@ export class Module {
 			const specLength = isImportDecl ? (statement.node as ImportDeclaration).specifiers.length: 0
 			if (isImportDecl && !specLength) {
 				//@ts-ignore
-					const id = this.resolvedIds[ statement.node.source.value ];
+				const id = this.resolvedIds[ statement.node.source.value ];
 				const module = this.moduleLoader.modulesById[ id ];
 				strongDependencies[ module.id ] = module;
 			} else {
@@ -343,7 +318,8 @@ export class Module {
 				magicString.remove(statement.start, statement.end)
 				return;
 			}
-			
+			statement.replacedIdentifiers( magicString, this.replacements );
+
 			if (statement.isExportDeclartion()) {
 				// remove `export` from `export var foo = 42`
 				//@ts-ignore
@@ -357,7 +333,10 @@ export class Module {
 			        magicString.remove(statement.node.start, statement.node.declaration.start);
 				} 
 				else if (statement.node.type === 'ExportDefaultDeclaration') {
-				
+					//export default 40;
+					//import bar from './bar'
+					// var bar = 40;
+					//要把 default =bar
 					const canonicalName = this.getDefaultName();
 					let exporDefaulDecl = (statement.node as ExportDefaultDeclaration).declaration
 						if (exporDefaulDecl.type === 'FunctionDeclaration') {
@@ -370,22 +349,6 @@ export class Module {
 
 					}
 				}
-				
-				// else if (statement.node.type === 'ExportDefaultDeclaration') {
-			
-
-				// 	const canonicalName = this.getDefaultName();
-				// 	let exporDefaulDecl = (statement.node as ExportDefaultDeclaration).declaration
-				// 	if (exporDefaulDecl.type === 'FunctionDeclaration') {
-						
-				// 		// magicString.overwrite()
-				// 	} else {
-				// 	console.log("exportDefault",statement.source(),canonicalName)
-				// 	magicString.overwrite(statement.start,statement.node.declaration.start, `var ${canonicalName} =`)
-
-				// 	}
-				// }
-
 			}
 		})
 
@@ -394,7 +357,6 @@ export class Module {
 
 	suggestName(name: string, replacement: string) {
 		let targetName = name ==="Default"? this.exports[name].localName : name 
-		// console.log()
 		if (this.replacements[targetName]) {
 			while (this.replacements[targetName]) {
 				let replace = `_${this.replacements[targetName]}`
@@ -404,7 +366,6 @@ export class Module {
 			this.replacements[targetName] = replacement
 
 		}
-		console.log("suggestName", this.replacements);
 	} 
 
 	getModule(importee: string):Module {

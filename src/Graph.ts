@@ -72,6 +72,7 @@ export class Graph {
         });
        
        const code = magicString.toString();
+       console.log("render code",code)
        return {code}
     }
 }

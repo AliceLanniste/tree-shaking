@@ -3,7 +3,7 @@ import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
 import {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
 import { Graph } from "./Graph";
-import { ErrCode } from "./error";
+import { ErrCode, error } from "./error";
 import { Statement } from "./node/Statement";
 
 export class ModuleLoader {
@@ -105,7 +105,6 @@ export class ModuleLoader {
 
     sorModule() {
         this.visit(this.modules[0])
-        console.log("sortModule",this.ordered.length)
     }
     visit(module: Module) {
         const strongDependencies = module.collectDependencies()
