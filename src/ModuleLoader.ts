@@ -3,10 +3,8 @@ import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
 import {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
 import { Graph } from "./Graph";
-import { Console, error } from "console";
 import { ErrCode } from "./error";
 import { Statement } from "./node/Statement";
-import { resolve } from 'node:path';
 
 export class ModuleLoader {
     bodyStatement: Statement[] = [];
@@ -28,7 +26,7 @@ export class ModuleLoader {
         if (entryModules.length === 0) {
 			throw new Error('You must supply options.input to rollup');
         }
-        entryModules.forEach(entryModule => entryModule.bindingImportSpecifier())
+        entryModules.forEach(entryModule => entryModule.markAllStatement(true))
         this.sorModule()
         return this;
     }
@@ -107,6 +105,7 @@ export class ModuleLoader {
 
     sorModule() {
         this.visit(this.modules[0])
+        console.log("sortModule",this.ordered.length)
     }
     visit(module: Module) {
         const strongDependencies = module.collectDependencies()

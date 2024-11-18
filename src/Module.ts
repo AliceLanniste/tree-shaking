@@ -3,6 +3,7 @@ import { Statement } from './node/Statement';
 import { moduleImport, rainbowOptions } from "./types";
 import { ExportDefaultDeclaration, 
 		ExportNamedDeclaration, 
+		FunctionDeclaration, 
 		Identifier,
 		ImportDeclaration, 
 		parse, 
@@ -25,7 +26,7 @@ export class Module {
 	modifications: Record<string, Statement> = {};
 	replacements: Record<string, string> = {};
 	resolvedIds: Record<string,string> = {};
-	
+	marked: Record<string, boolean> = {};
 	constructor(
         private readonly graph: Graph,
 		public readonly id: string,
@@ -43,7 +44,6 @@ export class Module {
 		this.source = code
 
 		this.magicCode = new MagicString(code, { filename: this.id });
-		// console.log("setSource",this.source,this.magicCode.toString())
 		this.statements = this.parse(ast)
 		this.analyse()
 	}
@@ -65,13 +65,14 @@ export class Module {
 	 }
 	 let statements:Statement[] = [];
 	 statements = this.ast.body.map( ( node, index ) => {
-		// const magicString = this.magicCode.snip( node.start, node.end );
 		return new Statement( node,  this, node.start,node.end);
 	});
 		statements.forEach((statement, index) =>
 	 statement.next = statement[index+1]? statement[index+1].start : statement.end)
 	 return statements;
 	}	
+
+
 
 	analyse() {
 		if(!this.statements) return;
@@ -111,7 +112,7 @@ export class Module {
 					}) 
 				}
 		
-			this.imports[name] = {
+			this.imports[localName] = {
 				importee,
 				name,
 				localName,
@@ -120,59 +121,108 @@ export class Module {
 	}
 
 	addExport(statement: Statement) {
-		const exportDecl = statement.scopeNode.node as any;
-		const source = exportDecl.source && exportDecl.source.value;
-		const exportDefaultDecl = exportDecl as ExportDefaultDeclaration;
-		const exportNameDecl = exportDecl as ExportNamedDeclaration;
+		// const exportDecl = statement.node as any;
+		// const source = exportDecl.source && exportDecl.source.value;
+		// const exportDefaultDecl = exportDecl as ExportDefaultDeclaration;
+		// const exportNameDecl = exportDecl as ExportNamedDeclaration;
+		
+		//export default function foo() {}  declaration: FunctionDeclaration
+		//export default foo;    declaration: Identifier
+		//export default 42; declaration: Literal
+		if (statement.node.type == 'ExportDefaultDeclaration') {
+			let exportDefaultDecl = statement.node as ExportDefaultDeclaration;
+			const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
+			const identifier = isDeclaration ?
+				//@ts-ignore
+				exportDefaultDecl.declaration.id.name
+				:exportDefaultDecl.declaration.type === 'Identifier' ?
+					exportDefaultDecl.declaration.name :
+					null;
 
-		if (exportDefaultDecl.type == 'ExportDefaultDeclaration') {
-			// const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
 
-			 this.exports['Default'] = {
-				node:statement.scopeNode.node,
-				localName: 'Default',
-				isDeclaration: false,
+			this.exports['Default'] = {
+				statement,
+				localName: identifier || 'Default',
+				isDeclaration: isDeclaration,
+				identifier,
 			 }
-		} else if(exportNameDecl.type == 'ExportNamedDeclaration') {
-				if (exportNameDecl.specifiers.length) {
-					exportNameDecl.specifiers.forEach(specifier => {
-						const localName = (specifier.local as Identifier).name;
-						const exportedName = (specifier.exported as Identifier).name;
-
-						this.exports[ exportedName ] = {
-							localName,
-							exportedName
-						};
-
-						// export { foo } from './foo';
-						if ( source ) {
-							this.imports[ localName ] = {
-								source,
-								localName,
-								name: localName
-							};
-						}
-					})
-				} else {
-					let declaration = exportDecl.declaration;
-
-					let name:string;
-
-					if ( declaration.type === 'VariableDeclaration' ) {
-						// export var foo = 42
-						name = declaration.declarations[0].id.name;
-					} else {
-						// export function foo () {}
-						name = declaration.id.name;
-					}
-
-					this.exports[ name ] = {
-						statement,
-						localName: name,
-						expression: declaration
-					};
-				}
 		}
+			// export { foo, bar, baz }
+		// export var foo = 42;
+		// export function foo () {}
+		else if (statement.node.type == 'ExportNamedDeclaration') {
+			const exporNamedDecl = statement.node as ExportNamedDeclaration;
+			if (exporNamedDecl.specifiers.length) {
+				exporNamedDecl.specifiers.forEach(specifier => {
+					const localName = (specifier.local as Identifier).name;
+					const exportedName = (specifier.exported as Identifier).name;
+
+					this.exports[exportedName] = {
+						statement,
+						localName,
+						exportedName,
+					}
+				})
+			} else {
+				const declaration = exporNamedDecl.declaration
+				let name: string =''
+				if (declaration && declaration.type === 'VariableDeclaration') {
+					//export var foo = 1
+					let identifier = declaration.declarations[0].id as Identifier;
+					name = identifier.name;
+				} else {
+
+					//export function foo() {}
+					name = (declaration as FunctionDeclaration).id.name;
+				}
+
+				this.exports[ name ] = {
+					statement,
+					localName: name,
+					expression: declaration
+				};
+			}
+		 }
+		// else if (exportNameDecl.type == 'ExportNamedDeclaration') {
+		// 		if (exportNameDecl.specifiers.length) {
+		// 			exportNameDecl.specifiers.forEach(specifier => {
+		// 				const localName = (specifier.local as Identifier).name;
+		// 				const exportedName = (specifier.exported as Identifier).name;
+
+		// 				this.exports[ exportedName ] = {
+		// 					localName,
+		// 					exportedName
+		// 				};
+
+		// 				// export { foo } from './foo';
+		// 				if ( source ) {
+		// 					this.imports[ localName ] = {
+		// 						source,
+		// 						localName,
+		// 						name: localName
+		// 					};
+		// 				}
+		// 			})
+		// 		} else {
+		// 			let declaration = exportDecl.declaration;
+
+		// 			let name:string;
+
+		// 			if ( declaration.type === 'VariableDeclaration' ) {
+		// 				// export var foo = 42
+		// 				name = declaration.declarations[0].id.name;
+		// 			} else {
+		// 				// export function foo () {}
+		// 				name = declaration.id.name;
+		// 			}
+
+		// 			this.exports[ name ] = {
+		// 				statement,
+		// 				localName: name,
+		// 				expression: declaration
+		// 			};
+		// 		}
+		// }
 
 	}
     
@@ -180,6 +230,46 @@ export class Module {
 	bindingImportSpecifier() {
 
 	}
+    
+	markAllStatement(isEntryModule: boolean) {
+		this.statements.forEach(statement => {
+			//@ts-ignore
+			if (statement.node.type === 'ExportNamedDeclaration' && statement.node.specifiers.length) {
+				 if (isEntryModule)  statement.mark()
+			} else {
+				statement.mark()
+		}
+		})
+	}
+
+	mark(name: string) {
+		if (this.marked[name]) return
+		this.marked[name] = true
+		
+			console.log("module mark name", name,this.imports);
+		
+		if (this.imports[name]) {
+			const importDeclaration = this.imports[name];
+			if (importDeclaration.name === 'Default') {
+				const module = this.getModule(importDeclaration.importee!)
+				module.suggestName(importDeclaration.name, importDeclaration.localName!)
+				console.log("importDefault",importDeclaration.name,importDeclaration.localName)
+			}
+		} 
+		else {
+
+			const statement = name === 'default' ? this.exports['Default'].statement : this.definitions[name]
+			if (statement) {
+				statement.mark()
+			}
+		}
+
+	}
+
+	markExport() {
+
+	}
+
 	// expandStatement( name: string):Statement {
 	// 	let statement:Statement;
 	// 	if(name ==='Default') {
@@ -213,16 +303,18 @@ export class Module {
 	collectDependencies() {
 		let strongDependencies:Record<string, Module> = {};
 		this.statements.forEach((statement) => {
-			// console.log("collcectDependencies--before", statement.node);
 			const isImportDecl = statement.isImportDeclartion()
 			const specLength = isImportDecl ? (statement.node as ImportDeclaration).specifiers.length: 0
 			if (isImportDecl && !specLength) {
+				//@ts-ignore
 					const id = this.resolvedIds[ statement.node.source.value ];
 				const module = this.moduleLoader.modulesById[ id ];
 				strongDependencies[ module.id ] = module;
 			} else {
-				Object.keys( statement.strongDependsOn ).forEach( name => {
+				Object.keys(statement.strongDependsOn).forEach(name => {
+
 					if (statement.defines[name] || !this.imports[name]) return;
+					//@ts-ignore
 					let id = this.resolvedIds[this.imports[name].importee]
 					const module = this.moduleLoader.modulesById[id]
 					strongDependencies[module.id] = module
@@ -254,16 +346,81 @@ export class Module {
 			
 			if (statement.isExportDeclartion()) {
 				// remove `export` from `export var foo = 42`
+				//@ts-ignore
 				if (statement.node.type === 'ExportNamedDeclaration' && statement.node.declaration.type === 'VariableDeclaration') {
+					//@ts-ignore
 					magicString.remove(statement.node.start, statement.node.declaration.start);
 				}
-				else if ( statement.node.declaration.id ) {
-					magicString.remove( statement.node.start, statement.node.declaration.start );
+				//@ts-ignore
+			   else if (statement.node.declaration.id) {
+					   //@ts-ignore
+			        magicString.remove(statement.node.start, statement.node.declaration.start);
+				} 
+				else if (statement.node.type === 'ExportDefaultDeclaration') {
+				
+					const canonicalName = this.getDefaultName();
+					let exporDefaulDecl = (statement.node as ExportDefaultDeclaration).declaration
+						if (exporDefaulDecl.type === 'FunctionDeclaration') {
+						//@ts-ignore
+						magicString.overwrite(statement.start, statement.node.declaration.start + 8, `function ${canonicalName}`);
+					}
+					else {
+						//@ts-ignore
+					magicString.overwrite(statement.start,statement.node.declaration.start, `var ${canonicalName} =`)
+
+					}
 				}
+				
+				// else if (statement.node.type === 'ExportDefaultDeclaration') {
+			
+
+				// 	const canonicalName = this.getDefaultName();
+				// 	let exporDefaulDecl = (statement.node as ExportDefaultDeclaration).declaration
+				// 	if (exporDefaulDecl.type === 'FunctionDeclaration') {
+						
+				// 		// magicString.overwrite()
+				// 	} else {
+				// 	console.log("exportDefault",statement.source(),canonicalName)
+				// 	magicString.overwrite(statement.start,statement.node.declaration.start, `var ${canonicalName} =`)
+
+				// 	}
+				// }
 
 			}
 		})
 
 		return magicString.trim()
 	}
+
+	suggestName(name: string, replacement: string) {
+		let targetName = name ==="Default"? this.exports[name].localName : name 
+		// console.log()
+		if (this.replacements[targetName]) {
+			while (this.replacements[targetName]) {
+				let replace = `_${this.replacements[targetName]}`
+				this.replacements[targetName] = replace
+			}
+		} else {
+			this.replacements[targetName] = replacement
+
+		}
+		console.log("suggestName", this.replacements);
+	} 
+
+	getModule(importee: string):Module {
+		const id = this.resolvedIds[ importee];
+		const module = this.moduleLoader.modulesById[id];
+		return module
+	}
+
+	getDefaultName() {
+		const exportDefault = this.exports['Default']
+		if (!exportDefault) return ''
+		
+		const name = exportDefault.identifier  ?
+			exportDefault.identifier :
+			exportDefault.localName;
+
+	   return this.replacements[name]
+   }
 }

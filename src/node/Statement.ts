@@ -153,6 +153,15 @@ export class Statement {
         return  /^Export/.test( this.node.type )
     }
   
+  mark() {
+    
+    Object.keys(this.dependsOn).forEach(depend => {
+        if (this.defines[depend])  return
+          
+         this.module.mark(depend)
+      })
+    }
+  
   source () {
 		return this.module.source.slice( this.start, this.end );
 	}
