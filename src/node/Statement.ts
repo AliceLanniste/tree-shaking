@@ -151,33 +151,57 @@ export class Statement {
     if (keys.length === 0) {
       return;
     }
-    let that = this
+      let that = this
+      let depth = 0
+
     walkAST(that.node, {
-      enter(node,parent) {
-        let newNames: Record<string, string> = {}
-        let scope = that.scope;
-        let hasReplacement = false;
-        keys.forEach((key) => {
-            if (scope.declarations[key]) {
-              newNames[key] = names[key]
-              hasReplacement = true
+      enter(node, parent) {
+        
+        
+        if (/^Function/.test(node.type)) depth += 1;
+        
+        let scope = node._scope
+        if (scope) {
+          let newNames:Record<string,string> = {}
+
+          Object.keys(names).forEach(name => {
+            if (!scope.declarations[name]) {
+               newNames[name] = names[name]
             }
-        })
-        replacementStack.push(newNames);
-         if (!hasReplacement) {
-           this.skip();
+          })
+
+          names = newNames
+          replacementStack.push(newNames);
         }
+        if ( node.type !== 'Identifier' ) return;
+        const name = names[ node.name ];
+				if ( !name || name === node.name ) return;
+
+        // let newNames: Record<string, string> = {}
+        // let scope = node._scope;
+        // let hasReplacement = false;
+        // keys.forEach((key) => {
+        //     if (scope.declarations[key]) {
+        //       newNames[key] = names[key]
+        //       hasReplacement = true
+        //     }
+        // })
+         
+        // replacementStack.push(newNames);
+        //  if (!hasReplacement) {
+        //    this.skip();
+        // }
        
-        if (node.type === 'Identifier' &&parent&& parent.type !== "MemberExpression") {
-          let name = (node as Identifier).name;
+        // if (node.type === 'Identifier' &&parent&& parent.type !== "MemberExpression") {
+        //   let name = (node as Identifier).name;
           
-          if (Object.hasOwn(names, name) && name !== names[name]) {
-            name = names[name]
+        //   if (Object.hasOwn(names, name) && name !== names[name]) {
+        //     name = names[name]
             
-          }
+        //   }
         
          magiString.overwrite(node.start, node.end, name);
-        }
+        // }
       },
 
       leave(node) {
