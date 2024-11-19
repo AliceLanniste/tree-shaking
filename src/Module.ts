@@ -276,7 +276,8 @@ export class Module {
 	}
 
 	collectDependencies() {
-		let strongDependencies:Record<string, Module> = {};
+		let strongDependencies: Record<string, Module> = {};
+		let weakDependencies: Record<string, Module> = {};
 		this.statements.forEach((statement) => {
 			const isImportDecl = statement.isImportDeclartion()
 			const specLength = isImportDecl ? (statement.node as ImportDeclaration).specifiers.length: 0
@@ -284,7 +285,8 @@ export class Module {
 				//@ts-ignore
 				const id = this.resolvedIds[ statement.node.source.value ];
 				const module = this.moduleLoader.modulesById[ id ];
-				strongDependencies[ module.id ] = module;
+				strongDependencies[module.id] = module;
+				console.log("!importDecl")
 			} else {
 				Object.keys(statement.strongDependsOn).forEach(name => {
 
@@ -297,12 +299,22 @@ export class Module {
 			}
 		})
 
-		return strongDependencies;
+		this.statements.forEach(statement => {
+			Object.keys(statement.dependsOn).forEach(name => {
+
+				if (statement.defines[name] || !this.imports[name]) return;
+				//@ts-ignore
+				let id = this.resolvedIds[this.imports[name].importee]
+				const module = this.moduleLoader.modulesById[id]
+				weakDependencies[module.id] = module
+			});
+		})
+		return { strongDependencies,weakDependencies };
 	}
 
 	
     
-	render() {
+	render(replacements:Record<string, string>) {
 
 		let magicString = this.magicCode
 		this.statements.forEach(statement => {
@@ -318,7 +330,7 @@ export class Module {
 				magicString.remove(statement.start, statement.end)
 				return;
 			}
-			statement.replacedIdentifiers( magicString, this.replacements );
+			statement.replacedIdentifiers( magicString, replacements );
 
 			if (statement.isExportDeclartion()) {
 				// remove `export` from `export var foo = 42`

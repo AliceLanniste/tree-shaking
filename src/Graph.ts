@@ -62,17 +62,7 @@ export class Graph {
 
    async render() {
        let moduleGraph = await this.createModuleGraph()
-       let orderedModules = moduleGraph.render()
-    	let magicString = new MagicString.Bundle({ separator: '\n\n' });
-       orderedModules.forEach(module => {
-			const source = module.render();
-			if ( source.toString().length ) {
-				magicString.addSource( source );
-			}
-        });
-       
-       const code = magicString.toString();
-       console.log("render code",code)
-       return {code}
+       let result = moduleGraph.render()
+       return result
     }
 }

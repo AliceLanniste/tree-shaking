@@ -5,6 +5,7 @@ import {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
 import { Graph } from "./Graph";
 import { ErrCode, error } from "./error";
 import { Statement } from "./node/Statement";
+import * as MagicString from 'magic-string';
 
 export class ModuleLoader {
     bodyStatement: Statement[] = [];
@@ -104,13 +105,33 @@ export class ModuleLoader {
     }
 
     sorModule() {
-        this.visit(this.modules[0])
+        let seen: Record<string, boolean> = {}
+        let hasCycles:boolean = false
+        this.visit(this.modules[0], seen, hasCycles)
     }
-    visit(module: Module) {
-        const strongDependencies = module.collectDependencies()
-        Object.values(strongDependencies).forEach(depend =>
-            this.visit(depend)
-        )
+    visit(module: Module,seen:Record<string,boolean>,hasCycles:boolean) {
+        seen[module.id] = true
+        const { strongDependencies, weakDependencies } = module.collectDependencies()
+        Object.keys(strongDependencies).forEach(id => {
+            const imported = strongDependencies[id]
+            if (seen[id]) {
+                hasCycles = true
+                return
+            }
+
+            this.visit(imported,seen,hasCycles)
+        })
+
+         Object.keys(weakDependencies).forEach(id => {
+            const imported = weakDependencies[id]
+
+            if (seen[id]) {
+                hasCycles = true
+                return
+            }
+
+            this.visit(imported,seen,hasCycles)
+        })
         this.ordered.push(module)
 
     }
@@ -132,7 +153,6 @@ export class ModuleLoader {
 
 
         }
-        console.log("while-replacement",allReplacements)
        
         function getSafeName(name: string) {
 		
@@ -144,12 +164,21 @@ export class ModuleLoader {
 			return name;
 
         }
-
         return allReplacements;
     }
     render() {
+
         const allReplacements = this.deconflict();
-        console.log("render", allReplacements);
-        return this.ordered;
+let magicString = new MagicString.Bundle({ separator: '\n\n' });
+       this.ordered.forEach(module => {
+			const source = module.render(allReplacements[module.id]);
+			if ( source.toString().length ) {
+				magicString.addSource( source );
+			}
+        });
+       
+       const code = magicString.toString();
+       return {code}
+        
     }
 }
