@@ -114,7 +114,42 @@ export class ModuleLoader {
         this.ordered.push(module)
 
     }
+
+    deconflict() {
+        let allReplacements: Record<string, any> = {}
+        let usedNames:Record<string,boolean> = {}
+        let i = this.ordered.length
+        while (i--) {
+            const module = this.ordered[i]
+            allReplacements[module.id] = {}
+            Object.keys( module.definitions ).forEach( name => {
+				const safeName = getSafeName( name );
+				if ( safeName !== name ) {
+					// module.rename( name, safeName );
+					allReplacements[ module.id ][ name ] = safeName;
+				}
+			});
+
+
+        }
+        console.log("while-replacement",allReplacements)
+       
+        function getSafeName(name: string) {
+		
+            while (usedNames[name]) {
+				name = `_${name}`;
+			}
+
+			usedNames[ name ] = true;
+			return name;
+
+        }
+
+        return allReplacements;
+    }
     render() {
+        const allReplacements = this.deconflict();
+        console.log("render", allReplacements);
         return this.ordered;
     }
 }
