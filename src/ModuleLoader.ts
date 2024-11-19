@@ -146,7 +146,7 @@ export class ModuleLoader {
             Object.keys( module.definitions ).forEach( name => {
 				const safeName = getSafeName( name );
 				if ( safeName !== name ) {
-					// module.rename( name, safeName );
+					module.rename( name, safeName );
 					allReplacements[ module.id ][ name ] = safeName;
 				}
 			});
@@ -155,7 +155,7 @@ export class ModuleLoader {
         }
        
         this.ordered.forEach(module => {
-            Object.keys(module).forEach(name => {
+            Object.keys(module.imports).forEach(name => {
                 const bundleName = this.trace(module, name);
                 if (bundleName !== name) {
                     allReplacements[module.id][name] = bundleName
@@ -177,7 +177,9 @@ export class ModuleLoader {
 
     trace(module: Module, name: string) {
         const importDeclaration = module.imports[name]
-        
+        // if (!importDeclaration) {
+        //     console.log("import--trace",module.id, module.replacements[name],name)
+        // }
         if (!importDeclaration) return module.replacements[name] || name
         
         const id = module.resolvedIds[importDeclaration.importee]

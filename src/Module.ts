@@ -312,7 +312,9 @@ export class Module {
 		return { strongDependencies,weakDependencies };
 	}
 
-	
+	rename(name: string, newName: string) {
+		this.replacements[name] = newName
+	}
     
 	render(replacements:Record<string, string>) {
 
