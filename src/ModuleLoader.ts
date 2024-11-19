@@ -154,6 +154,14 @@ export class ModuleLoader {
 
         }
        
+        this.ordered.forEach(module => {
+            Object.keys(module).forEach(name => {
+                const bundleName = this.trace(module, name);
+                if (bundleName !== name) {
+                    allReplacements[module.id][name] = bundleName
+                }
+                })
+            })
         function getSafeName(name: string) {
 		
             while (usedNames[name]) {
@@ -166,9 +174,30 @@ export class ModuleLoader {
         }
         return allReplacements;
     }
+
+    trace(module: Module, name: string) {
+        const importDeclaration = module.imports[name]
+        
+        if (!importDeclaration) return module.replacements[name] || name
+        
+        const id = module.resolvedIds[importDeclaration.importee]
+        const traceModule = this.modulesById[id]
+
+        return this.traceExport(traceModule,importDeclaration.name!)
+    }
+    
+    traceExport(module: Module, name: string) {
+        
+        const exportDeclaration = module.exports[name];
+		if ( exportDeclaration ) return this.trace( module, exportDeclaration.localName );
+
+    }
+
     render() {
 
         const allReplacements = this.deconflict();
+                console.log("module-allReplacements",allReplacements)
+
 let magicString = new MagicString.Bundle({ separator: '\n\n' });
        this.ordered.forEach(module => {
 			const source = module.render(allReplacements[module.id]);

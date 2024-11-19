@@ -6,9 +6,9 @@ export interface UnresolvedModule {
 }
 
 export interface moduleImport {
-	importee?: string,
-	name?: string,
-	localName?: string,
+	importee: string,
+	name: string,
+	localName: string,
 	source?:string
 }
 
