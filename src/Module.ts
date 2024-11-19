@@ -357,15 +357,16 @@ export class Module {
 
 	suggestName(name: string, replacement: string) {
 		let targetName = name ==="Default"? this.exports[name].localName : name 
-		if (this.replacements[targetName]) {
-			while (this.replacements[targetName]) {
-				let replace = `_${this.replacements[targetName]}`
-				this.replacements[targetName] = replace
-			}
-		} else {
-			this.replacements[targetName] = replacement
+		this.replacements[targetName] = replacement
+		// if (this.replacements[targetName]) {
+		// 	while (this.replacements[targetName]) {
+		// 		let replace = `_${this.replacements[targetName]}`
+		// 		this.replacements[targetName] = replace
+		// 	}
+		// } else {
+		// 	this.replacements[targetName] = replacement
 
-		}
+		// }
 	} 
 
 	getModule(importee: string):Module {
