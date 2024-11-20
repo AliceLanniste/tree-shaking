@@ -28,6 +28,7 @@ export class Module {
 	resolvedIds: Record<string,string> = {};
 	marked: Record<string, boolean> = {};
 	suggestNames: Record<string, string> = {};
+	needsDefault: boolean = false
 	constructor(
         private readonly graph: Graph,
 		public readonly id: string,
@@ -228,9 +229,7 @@ export class Module {
 	}
     
 	
-	bindingImportSpecifier() {
-
-	}
+	
     
 	markAllStatement(isEntryModule: boolean) {
 		this.statements.forEach(statement => {
@@ -251,12 +250,14 @@ export class Module {
 
 	mark(name: string) {
 		if (this.marked[name]) return
-		this.marked[name] = true		
+		this.marked[name] = true	
 		if (this.imports[name]) {
 			const importDeclaration = this.imports[name];
 			const module = this.getModule(importDeclaration.importee!)
 
 			if (importDeclaration.name === 'Default') {
+			
+				module.needsDefault = true
 				module.suggestName(importDeclaration.name, importDeclaration.localName!)
 			} else {
 				module.suggestName(importDeclaration.name, name);
@@ -264,7 +265,6 @@ export class Module {
 			module.markExport(importDeclaration.name, name)
 		} 
 		else {
-
 			const statement = name === 'default' ? this.exports['Default'].statement : this.definitions[name]
 			if (statement) {
 				statement.mark()
@@ -277,7 +277,7 @@ export class Module {
 		const exportDecl = module.exports[name]
 		if (exportDecl) {
 			if ( name === 'default' ) {
-			
+				this.needsDefault = true
 				this.suggestName( 'default', suggestedName );
 				return exportDecl.statement.mark();
 			}
@@ -397,8 +397,7 @@ export class Module {
 		
 		const name = exportDefault.identifier  ?
 			exportDefault.identifier :
-			exportDefault.localName;
-
-	   return this.replacements[name]
+			this.replacements['Default'];
+	   return this.replacements[name] || name
    }
 }

@@ -153,7 +153,18 @@ export class ModuleLoader {
 
 
         }
-       
+        this.ordered.forEach(module => {
+            if (!module.needsDefault) return
+            
+            if (module.needsDefault) {
+                const defaultExport = module.exports['Default']
+                if (defaultExport && defaultExport.identifier) return;
+                const defaultName = getSafeName( module.suggestNames['Default'] );
+				module.replacements['Default'] = defaultName;
+            }
+        })
+
+
         this.ordered.forEach(module => {
             Object.keys(module.imports).forEach(name => {
                 const bundleName = this.trace(module, name);
@@ -196,7 +207,6 @@ export class ModuleLoader {
     render() {
 
         const allReplacements = this.deconflict();
-                console.log("module-allReplacements",allReplacements)
 
 let magicString = new MagicString.Bundle({ separator: '\n\n' });
        this.ordered.forEach(module => {
