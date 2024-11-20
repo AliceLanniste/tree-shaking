@@ -343,7 +343,7 @@ export class Module {
 				return;
 			}
 			
-			statement.replacedIdentifiers( magicString, replacements );
+			statement.replaceIdentifiers( magicString, replacements );
 
 			if (statement.isExportDeclartion()) {
 				// remove `export` from `export var foo = 42`

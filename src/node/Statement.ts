@@ -145,74 +145,69 @@ export class Statement {
 			}
         }
   }
-    replacedIdentifiers(magiString: MagicString,names: Record<string, string>) {
-    const replacementStack = [names]
-    let keys = Object.keys(names)
-    if (keys.length === 0) {
-      return;
-    }
-      let that = this
-      let depth = 0
 
-    walkAST(that.node, {
-      enter(node, parent) {
-        
-        
-        if (/^Function/.test(node.type)) depth += 1;
-        
-        let scope = node._scope
-        if (scope) {
-          let newNames:Record<string,string> = {}
-
-          Object.keys(names).forEach(name => {
-            if (!scope.declarations[name]) {
-               newNames[name] = names[name]
-            }
-          })
-
-          names = newNames
-          replacementStack.push(newNames);
-        }
-        if ( node.type !== 'Identifier' ) return;
-        const name = names[ node.name ];
-				if ( !name || name === node.name ) return;
-
-        // let newNames: Record<string, string> = {}
-        // let scope = node._scope;
-        // let hasReplacement = false;
-        // keys.forEach((key) => {
-        //     if (scope.declarations[key]) {
-        //       newNames[key] = names[key]
-        //       hasReplacement = true
-        //     }
-        // })
-         
-        // replacementStack.push(newNames);
-        //  if (!hasReplacement) {
-        //    this.skip();
-        // }
-       
-        // if (node.type === 'Identifier' &&parent&& parent.type !== "MemberExpression") {
-        //   let name = (node as Identifier).name;
-          
-        //   if (Object.hasOwn(names, name) && name !== names[name]) {
-        //     name = names[name]
-            
-        //   }
-        
-         magiString.overwrite(node.start, node.end, name);
-        // }
-      },
-
-      leave(node) {
-        if ( that.scope ) {
-				replacementStack.pop();
-				names = replacementStack[ replacementStack.length - 1 ];
-			}
-      },
-    })
-  }
   
+	replaceIdentifiers ( magicString:MagicString, names:Record<string,string> ) {
+		const replacementStack = [ names ];
+		
+		let that = this;
+		let topLevel = true;
+		let depth = 0;
+
+		walkAST( this.node, {
+			enter ( node, parent ) {
+			
+				if ( /^Function/.test( node.type ) ) depth += 1;
+
+			
+
+				const scope = node._scope;
+
+				if (scope) {
+					
+					topLevel = false;
+
+					let newNames:Record<string,string> ={}
+					let hasReplacements:boolean = false;
+
+				Object.keys( names ).forEach( name => {
+						if ( !scope.declarations[ name ] ) {
+							newNames[ name ] = names[ name ];
+							hasReplacements = true;
+						}
+					});
+
+
+					if ( !hasReplacements && depth > 0 ) {
+						return this.skip();
+					}
+
+					names = newNames;
+					replacementStack.push( newNames );
+				}
+
+				if ( node.type !== 'Identifier' ) return;
+			
+				const name = names[ (node as Identifier).name ];
+				if ( !name || name === (node as Identifier).name ) return;
+
+			
+				magicString.overwrite( node.start, node.end, name, true );
+			},
+
+			leave ( node ) {
+				if ( /^Function/.test( node.type ) ) depth -= 1;
+				if ( node._scope ) {
+					replacementStack.pop();
+					names = replacementStack[ replacementStack.length - 1 ];
+				}
+			}
+		});
+
+		return magicString;
+	}
+
+
     isImportDeclartion(): boolean {
       return  this.node.type ==='ImportDeclaration'
     }
