@@ -153,6 +153,9 @@ export class ModuleLoader {
 
 
         }
+
+       
+
         this.ordered.forEach(module => {
             if (!module.needsDefault) return
             
@@ -164,7 +167,6 @@ export class ModuleLoader {
             }
         })
 
-
         this.ordered.forEach(module => {
             Object.keys(module.imports).forEach(name => {
                 const bundleName = this.trace(module, name);
@@ -172,7 +174,7 @@ export class ModuleLoader {
                     allReplacements[module.id][name] = bundleName
                 }
                 })
-            })
+        })
         function getSafeName(name: string) {
 		
             while (usedNames[name]) {
@@ -198,6 +200,8 @@ export class ModuleLoader {
     }
     
     traceExport(module: Module, name: string) {
+        	if ( name === 'Default' ) return module.getDefaultName();
+
         
         const exportDeclaration = module.exports[name];
 		if ( exportDeclaration ) return this.trace( module, exportDeclaration.localName );
@@ -207,7 +211,6 @@ export class ModuleLoader {
     render() {
 
         const allReplacements = this.deconflict();
-
 let magicString = new MagicString.Bundle({ separator: '\n\n' });
        this.ordered.forEach(module => {
 			const source = module.render(allReplacements[module.id]);
@@ -216,7 +219,7 @@ let magicString = new MagicString.Bundle({ separator: '\n\n' });
 			}
         });
        
-       const code = magicString.toString();
+        const code = magicString.toString();
        return {code}
         
     }
