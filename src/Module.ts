@@ -27,6 +27,7 @@ export class Module {
 	replacements: Record<string, string> = {};
 	resolvedIds: Record<string,string> = {};
 	marked: Record<string, boolean> = {};
+	suggestNames: Record<string, string> = {};
 	constructor(
         private readonly graph: Graph,
 		public readonly id: string,
@@ -234,9 +235,9 @@ export class Module {
 	markAllStatement(isEntryModule: boolean) {
 		this.statements.forEach(statement => {
              if (statement.isImportDeclartion()) {
-				 let module = this.getModule(statement.node.source.value)
+				//  let module = this.getModule(statement.node.source.value)
 					 
-				 module.markAllStatement(false)
+				//  module.markAllStatement(false)
 				 }
 
 			//@ts-ignore
@@ -260,6 +261,7 @@ export class Module {
 			} else {
 				module.suggestName(importDeclaration.name, name);
 			}
+			module.markExport(importDeclaration.name, name)
 		} 
 		else {
 
@@ -271,8 +273,17 @@ export class Module {
 
 	}
 
-	markExport() {
+	markExport(name:string, suggestedName:string) {
+		const exportDecl = module.exports[name]
+		if (exportDecl) {
+			if ( name === 'default' ) {
+			
+				this.suggestName( 'default', suggestedName );
+				return exportDecl.statement.mark();
+			}
 
+			this.mark( exportDecl.localName );
+		}
 	}
 
 	collectDependencies() {
@@ -286,7 +297,6 @@ export class Module {
 				const id = this.resolvedIds[ statement.node.source.value ];
 				const module = this.moduleLoader.modulesById[ id ];
 				strongDependencies[module.id] = module;
-				console.log("!importDecl")
 			} else {
 				Object.keys(statement.strongDependsOn).forEach(name => {
 
@@ -332,6 +342,7 @@ export class Module {
 				magicString.remove(statement.start, statement.end)
 				return;
 			}
+			
 			statement.replacedIdentifiers( magicString, replacements );
 
 			if (statement.isExportDeclartion()) {
@@ -369,18 +380,9 @@ export class Module {
 		return magicString.trim()
 	}
 
-	suggestName(name: string, replacement: string) {
-		let targetName = name ==="Default"? this.exports[name].localName : name 
-		this.replacements[targetName] = replacement
-		// if (this.replacements[targetName]) {
-		// 	while (this.replacements[targetName]) {
-		// 		let replace = `_${this.replacements[targetName]}`
-		// 		this.replacements[targetName] = replace
-		// 	}
-		// } else {
-		// 	this.replacements[targetName] = replacement
-
-		// }
+	suggestName(name: string, suggestion:string) {
+		
+		this.suggestNames[name] = suggestion
 	} 
 
 	getModule(importee: string):Module {
