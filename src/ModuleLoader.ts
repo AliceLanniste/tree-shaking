@@ -177,9 +177,7 @@ export class ModuleLoader {
 
     trace(module: Module, name: string) {
         const importDeclaration = module.imports[name]
-        // if (!importDeclaration) {
-        //     console.log("import--trace",module.id, module.replacements[name],name)
-        // }
+    
         if (!importDeclaration) return module.replacements[name] || name
         
         const id = module.resolvedIds[importDeclaration.importee]
