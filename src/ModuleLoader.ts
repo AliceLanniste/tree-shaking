@@ -220,6 +220,8 @@ let magicString = new MagicString.Bundle({ separator: '\n\n' });
         });
        
         const code = magicString.toString();
+        console.log("allReplacements",allReplacements)
+        console.log("redner\n",code)
        return {code}
         
     }

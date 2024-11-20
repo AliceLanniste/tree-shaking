@@ -234,9 +234,9 @@ export class Module {
 	markAllStatement(isEntryModule: boolean) {
 		this.statements.forEach(statement => {
              if (statement.isImportDeclartion()) {
-				//  let module = this.getModule(statement.node.source.value)
+				 let module = this.getModule(statement.node.source.value)
 					 
-				//  module.markAllStatement(false)
+				 module.markAllStatement(false)
 				 }
 
 			//@ts-ignore
@@ -247,6 +247,7 @@ export class Module {
 		}
 		})
 	}
+
 
 	mark(name: string) {
 		if (this.marked[name]) return
