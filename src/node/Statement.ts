@@ -117,6 +117,7 @@ export class Statement {
 				enter: ( node, parent ) => {
 					
 					if ( node._scope ) scope = node._scope;
+          
 
 					this.checkForReads( scope, node, parent!, !readDepth );
 				},
@@ -137,9 +138,10 @@ export class Statement {
   checkForReads(scope: Scope, node: Node, parent: Node , strong:boolean ) {
     if (node.type === 'Identifier') {
       let identifierName = (node as Identifier).name;
-          const definingScope = scope.findDefineScope( (node as Identifier).name );
 
-			if ( !definingScope || definingScope.depth === 0 ) {
+      const definingScope = scope.findDefineScope( (node as Identifier).name );
+
+      if (!definingScope || definingScope.depth === 0) {
 				this.dependsOn[ identifierName ] = true;
 				if ( strong ) this.strongDependsOn[ identifierName ] = true;
 			}

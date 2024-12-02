@@ -25,6 +25,7 @@ export class Module {
     definitions:Record<string,Statement> = {};
 	modifications: Record<string, Statement> = {};
 	replacements: Record<string, string> = {};
+	//collect module depnencies (importee path: absolute path)
 	resolvedIds: Record<string,string> = {};
 	marked: Record<string, boolean> = {};
 	suggestNames: Record<string, string> = {};
@@ -69,7 +70,7 @@ export class Module {
 	 statements = this.ast.body.map( ( node, index ) => {
 		return new Statement( node,  this, node.start,node.end);
 	});
-		statements.forEach((statement, index) =>
+	statements.forEach((statement, index) =>
 	 statement.next = statement[index+1]? statement[index+1].start : statement.end)
 	 return statements;
 	}	
@@ -122,12 +123,7 @@ export class Module {
 		})
 	}
 
-	addExport(statement: Statement) {
-		// const exportDecl = statement.node as any;
-		// const source = exportDecl.source && exportDecl.source.value;
-		// const exportDefaultDecl = exportDecl as ExportDefaultDeclaration;
-		// const exportNameDecl = exportDecl as ExportNamedDeclaration;
-		
+	addExport(statement: Statement) {		
 		//export default function foo() {}  declaration: FunctionDeclaration
 		//export default foo;    declaration: Identifier
 		//export default 42; declaration: Literal
@@ -185,46 +181,6 @@ export class Module {
 				};
 			}
 		 }
-		// else if (exportNameDecl.type == 'ExportNamedDeclaration') {
-		// 		if (exportNameDecl.specifiers.length) {
-		// 			exportNameDecl.specifiers.forEach(specifier => {
-		// 				const localName = (specifier.local as Identifier).name;
-		// 				const exportedName = (specifier.exported as Identifier).name;
-
-		// 				this.exports[ exportedName ] = {
-		// 					localName,
-		// 					exportedName
-		// 				};
-
-		// 				// export { foo } from './foo';
-		// 				if ( source ) {
-		// 					this.imports[ localName ] = {
-		// 						source,
-		// 						localName,
-		// 						name: localName
-		// 					};
-		// 				}
-		// 			})
-		// 		} else {
-		// 			let declaration = exportDecl.declaration;
-
-		// 			let name:string;
-
-		// 			if ( declaration.type === 'VariableDeclaration' ) {
-		// 				// export var foo = 42
-		// 				name = declaration.declarations[0].id.name;
-		// 			} else {
-		// 				// export function foo () {}
-		// 				name = declaration.id.name;
-		// 			}
-
-		// 			this.exports[ name ] = {
-		// 				statement,
-		// 				localName: name,
-		// 				expression: declaration
-		// 			};
-		// 		}
-		// }
 
 	}
     
@@ -233,19 +189,14 @@ export class Module {
     
 	markAllStatement(isEntryModule: boolean) {
 		this.statements.forEach(statement => {
-             if (statement.isImportDeclartion()) {
-				 let module = this.getModule(statement.node.source.value)
+			if (statement.isImportDeclartion()) {
+					 let module = this.getModule(statement.node.source.value)
 					 
 				 module.markAllStatement(false)
-				 }
-
-			//@ts-ignore
-			if (statement.node.type === 'ExportNamedDeclaration' && statement.node.specifiers.length) {
-				 if (isEntryModule)  statement.mark()
 			} else {
 				statement.mark()
-		}
-		})
+			}
+		})		
 	}
 
 
@@ -260,9 +211,7 @@ export class Module {
 			
 				module.needsDefault = true
 				module.suggestName(importDeclaration.name, importDeclaration.localName!)
-			} else {
-				module.suggestName(importDeclaration.name, name);
-			}
+			} 
 			module.markExport(importDeclaration.name, name)
 		} 
 		else {
@@ -286,7 +235,9 @@ export class Module {
 			this.mark( exportDecl.localName );
 		}
 	}
+	//strongDependencies,分为specifier和strongDependsOn
 
+	//weakdependencies 来自statement.dependencies
 	collectDependencies() {
 		let strongDependencies: Record<string, Module> = {};
 		let weakDependencies: Record<string, Module> = {};
@@ -303,6 +254,8 @@ export class Module {
 
 					if (statement.defines[name] || !this.imports[name]) return;
 					//@ts-ignore
+				console.log("checkforRead",name, this.resolvedIds)
+
 					let id = this.resolvedIds[this.imports[name].importee]
 					const module = this.moduleLoader.modulesById[id]
 					strongDependencies[module.id] = module

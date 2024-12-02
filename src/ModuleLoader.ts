@@ -86,7 +86,7 @@ export class ModuleLoader {
             return await this.loadModule(depend, false, entryModule.id)
        }
         ) 
-           return  Promise.all(dependPromises)
+        return  Promise.all(dependPromises)
 
     }
 
@@ -103,7 +103,7 @@ export class ModuleLoader {
                     if ( typeof source === 'string' ) return transform(source);
                 }))
     }
-
+    //sortModule的按照dependencies,进行排序
     sorModule() {
         let seen: Record<string, boolean> = {}
         let hasCycles:boolean = false
@@ -153,8 +153,6 @@ export class ModuleLoader {
 
 
         }
-
-       
 
         this.ordered.forEach(module => {
             if (!module.needsDefault) return
@@ -220,7 +218,6 @@ let magicString = new MagicString.Bundle({ separator: '\n\n' });
         });
        
         const code = magicString.toString();
-        console.log("allReplacements",allReplacements)
         console.log("redner\n",code)
        return {code}
         

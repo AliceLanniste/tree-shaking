@@ -22,43 +22,6 @@ export class Graph {
         return this.moduleLoader.addEntryModule(normalizeModules(this.options), true);
         
     }
-    
-    storeNames(module:Module,name:string, localName:string) {
-        if (!(module.id in this.names)) {
-            this.names[module.id] = {}
-        }
-        const moudleNames = this.names[module.id] 
-        
-
-        moudleNames[name] = localName
-    }
-
-    getName(module:Module,name: string) {
-        if (!(module.id in this.names)) {
-            this.names[module.id] = {}
-        }
-
-        const moudleNames = this.names[module.id]
-        if (!moudleNames) {
-            throw new Error( `Could not get name for ${module.id}:${name}` );
-        }
-        
-        return moudleNames[name];
-    }    
-
-    getReplacements(module: Module) {
-         if (!(module.id in this.names)) {
-            this.names[module.id] = {}
-        }
-
-        const moudleNames = this.names[module.id]
-         if (!moudleNames) {
-            throw new Error( `Could not get name for ${module.id}:${name}` );
-         }
-        
-        return moudleNames
-        
-    }
 
    async render() {
        let moduleGraph = await this.createModuleGraph()

@@ -9,9 +9,7 @@ export default async function rainbowUp(options: rainbowOptions) {
       let graph = new Graph(options);
 
       let result = await graph.render()
-      // let moduleLoader = await graph.createModuleGraph()
 
-      // let statements = moduleLoader.bodyStatement;
       return {
             generate: (options:Record<string,unknown>) => result,
             write: () => {
