@@ -1,10 +1,19 @@
-import {  CatchClause, ClassDeclaration, ClassExpression, Function, FunctionDeclaration, FunctionExpression, Identifier, Node, VariableDeclaration } from "acorn";
+import {  AssignmentExpression, CallExpression, CatchClause, ClassDeclaration, ClassExpression, Function, FunctionDeclaration, FunctionExpression, Identifier, MemberExpression, Node, UpdateExpression, VariableDeclaration } from "acorn";
 import {Module} from "../Module";
 import Scope, { NULLScope } from '../utils/scope';
 import { ScopeNode } from "../types";
 import walkAST from "../utils/walk";
 import MagicString from "magic-string";
+import { ErrCode, error } from "../error";
 
+
+function isFunctionDeclaration ( node:Node, parent:Node | null ) {
+	// `function foo () {}` 
+	if ( node.type === 'FunctionDeclaration' ) return true;
+
+	// `var foo = function () {}` - same thing for present purposes
+	if ( node.type === 'FunctionExpression' && parent && parent.type === 'VariableDeclarator' ) return true;
+}
 export class Statement {
   node: Node;
   scopeNode: ScopeNode;
@@ -112,14 +121,16 @@ export class Statement {
     )
 
     let readDepth = 0;
+    let writeDepth = 0;
 		if ( !this.isImportDeclartion() ) {
 			walkAST( this.node, {
 				enter: ( node, parent ) => {
-					
+					if (isFunctionDeclaration(node,parent))  writeDepth += 1
 					if ( node._scope ) scope = node._scope;
           
 
-					this.checkForReads( scope, node, parent!, !readDepth );
+          this.checkForReads(scope, node, parent!, !readDepth);
+          this.checkForWrites(scope,node,writeDepth)
 				},
 				leave: ( node, parent ) => {
 
@@ -149,6 +160,54 @@ export class Statement {
   }
 
   
+  checkForWrites(scope: Scope, node: Node, writeDepth: number) {
+   
+		const addNode = ( node:Node, isAssignment:boolean ) => {
+			let depth = 0; // determine whether we're illegally modifying a binding or namespace
+
+			while ( node.type === 'MemberExpression' ) {
+				node = (node as MemberExpression).object;
+				depth += 1;
+			}
+
+			// disallow assignments/updates to imported bindings and namespaces
+      if (isAssignment) {
+        let idNode = node as Identifier
+               
+        const importSpecifier = this.module.imports[idNode.name];
+        console.log("isAssignment", importSpecifier, scope);
+
+				if ( importSpecifier && !scope.contains( idNode.name ) ) {
+					const minDepth = importSpecifier.name === '*' ?
+						2 : // cannot do e.g. `namespace.foo = bar`
+						1;  // cannot do e.g. `foo = bar`, but `foo.bar = bar` is fine
+
+          if (depth < minDepth) {
+            throw error(
+              {
+                code: ErrCode.ILLEGEAL_REASSIGN,
+                message: `Illegal reassignment to import '${idNode.name}'`
+              })
+					}
+				}		
+			}
+
+			// we only care about writes that happen a) at the top level,
+			// or b) inside a function that could be immediately invoked.
+			// Writes inside named functions are only relevant if the
+			// function is called, in which case we don't need to do
+			// anything (but we still need to call checkForWrites to
+			// catch illegal reassignments to imported bindings)
+			if ( writeDepth === 0 && node.type === 'Identifier' ) {
+				this.modifies[ (node as Identifier).name ] = true;
+			}
+		};
+
+    if (node.type === 'AssignmentExpression') {
+       console.log("checkForWrites", node,node.type)
+			addNode( (node as AssignmentExpression).left, true );
+		}
+	}
 	replaceIdentifiers ( magicString:MagicString, names:Record<string,string> ) {
 		const replacementStack = [ names ];
 		
@@ -190,7 +249,7 @@ export class Statement {
 				if ( !name || name === (node as Identifier).name ) return;
         
           
-        
+        //@ts-ignore
 			  if (parent&& parent.type === 'MemberExpression' && !parent.computed && node !== parent.object) {
           return
          }
