@@ -1,6 +1,5 @@
 import { Node } from "acorn";
 import Scope from "./scope";
-import { walk } from './helper';
 
 let shouldSkip = false;
 let shouldAbort = false
@@ -9,6 +8,7 @@ let context = {
 	abort: () => shouldAbort = true
 };
 let childKeys:Record<string,any> ={} ;
+
 
 
 interface ScopeNode extends Node {

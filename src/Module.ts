@@ -254,7 +254,6 @@ export class Module {
 
 					if (statement.defines[name] || !this.imports[name]) return;
 					//@ts-ignore
-				console.log("checkforRead",name, this.resolvedIds)
 
 					let id = this.resolvedIds[this.imports[name].importee]
 					const module = this.moduleLoader.modulesById[id]

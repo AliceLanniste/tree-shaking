@@ -161,14 +161,10 @@ export class Statement {
 			
 				if ( /^Function/.test( node.type ) ) depth += 1;
 
-			
-
 				const scope = node._scope;
 
 				if (scope) {
-					
 					topLevel = false;
-
 					let newNames:Record<string,string> ={}
 					let hasReplacements:boolean = false;
 
@@ -189,11 +185,16 @@ export class Statement {
 				}
 
 				if ( node.type !== 'Identifier' ) return;
-			
+			 
 				const name = names[ (node as Identifier).name ];
 				if ( !name || name === (node as Identifier).name ) return;
-
-			
+        
+          
+        
+			  if (parent&& parent.type === 'MemberExpression' && !parent.computed && node !== parent.object) {
+          return
+         }
+        
 				magicString.overwrite( node.start, node.end, name, true );
 			},
 
