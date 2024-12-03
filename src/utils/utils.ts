@@ -37,6 +37,7 @@ export function normalizeModules(entryPoints: InputOptions):UnresolvedModule[] {
 export async function resolveId(unresolveId: string,importer: string | undefined,
 ): Promise<ResolveResult> {
     //skip external module
+    unresolveId = unresolveId.replace(/\.js$/, '')
     if(importer !== undefined && !isAbsolute(unresolveId) && unresolveId[0] !== '.') return null;
     const resolvedId = await addJSExtension( importer ? resolve(dirname(importer), unresolveId) : resolve(unresolveId))
     return {
@@ -48,7 +49,7 @@ export async function resolveId(unresolveId: string,importer: string | undefined
 
 //js,cjs,mjs
 async function addJSExtension(filename: string) {
-    return (await findFile(filename) ??
+    return (
             await findFile(filename + '.js') ??
             await findFile(filename) +'.mjs')
 }
