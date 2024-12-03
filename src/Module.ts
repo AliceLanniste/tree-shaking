@@ -12,6 +12,7 @@ import { Comment } from "./node/Comment";
 import { ErrCode, error } from "./error";
 import MagicString from "magic-string";
 import { ModuleLoader } from "./ModuleLoader";
+import ExternalModule from "./ExternalModule";
 
 export class Module {
 	source: string;
@@ -190,9 +191,11 @@ export class Module {
 	markAllStatement(isEntryModule: boolean) {
 		this.statements.forEach(statement => {
 			if (statement.isImportDeclartion()) {
-					 let module = this.getModule(statement.node.source.value)
+				 let module = this.getModule(statement.node.source.value)
 					 
-				 module.markAllStatement(false)
+						
+					 
+				if (module instanceof Module)  module.markAllStatement(false)
 			} else {
 				statement.mark()
 			}
@@ -207,12 +210,12 @@ export class Module {
 			const importDeclaration = this.imports[name];
 			const module = this.getModule(importDeclaration.importee!)
 
-			if (importDeclaration.name === 'Default') {
+			if (importDeclaration.name === 'Default' && module instanceof Module) {
 			
 				module.needsDefault = true
 				module.suggestName(importDeclaration.name, importDeclaration.localName!)
 			} 
-			module.markExport(importDeclaration.name, name)
+			if (module instanceof Module) module.markExport(importDeclaration.name, name)
 		} 
 		else {
 			const statement = name === 'default' ? this.exports['Default'].statement : this.definitions[name]
@@ -248,7 +251,7 @@ export class Module {
 				//@ts-ignore
 				const id = this.resolvedIds[ statement.node.source.value ];
 				const module = this.moduleLoader.modulesById[ id ];
-				strongDependencies[module.id] = module;
+				if(module instanceof Module) strongDependencies[module.id] = module;
 			} else {
 				Object.keys(statement.strongDependsOn).forEach(name => {
 
@@ -257,7 +260,7 @@ export class Module {
 
 					let id = this.resolvedIds[this.imports[name].importee]
 					const module = this.moduleLoader.modulesById[id]
-					strongDependencies[module.id] = module
+					if(module instanceof Module) strongDependencies[module.id] = module
 				});
 			}
 		})
@@ -269,7 +272,7 @@ export class Module {
 				//@ts-ignore
 				let id = this.resolvedIds[this.imports[name].importee]
 				const module = this.moduleLoader.modulesById[id]
-				weakDependencies[module.id] = module
+				if(module instanceof Module) weakDependencies[module.id] = module
 			});
 		})
 		return { strongDependencies,weakDependencies };
@@ -338,10 +341,10 @@ export class Module {
 		this.suggestNames[name] = suggestion
 	} 
 
-	getModule(importee: string):Module {
+	getModule(importee: string):Module | ExternalModule{
 		const id = this.resolvedIds[ importee];
 		const module = this.moduleLoader.modulesById[id];
-		return module
+		  return module
 	}
 
 	getDefaultName() {

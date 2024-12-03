@@ -39,8 +39,10 @@ export interface ResolvedId extends ModuleOptions {
 
 export type ResolveResult = {
     resolvedId: string,
-    path: string
-} | null
+    path: string,
+    isExtrnal: boolean,
+
+} 
 
 
 export interface ImportDeclarationType {

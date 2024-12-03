@@ -6,13 +6,15 @@ import { Graph } from "./Graph";
 import { ErrCode, error } from "./error";
 import { Statement } from "./node/Statement";
 import * as MagicString from 'magic-string';
+import ExternalModule from './ExternalModule';
 
 export class ModuleLoader {
     bodyStatement: Statement[] = [];
     bodyString: string[] = [];
     modules: Module[] = [];
     ordered: Module[] = [];
-    modulesById:Record<string,Module> = {}
+    modulesById: Record<string, Module|ExternalModule> = {}
+    externalModules:ExternalModule[] = []
      constructor(
         private readonly graph: Graph,
         private readonly options: rainbowOptions,
@@ -38,9 +40,6 @@ export class ModuleLoader {
 		importer: string | undefined,
 	): Promise<Module> {
       const resolveResult = await resolveId(unresolvedId,importer)
-        if (resolveResult === null) {
-             error()
-        }
 
         return this.fetchModule(
                 resolveResult,
@@ -54,36 +53,47 @@ export class ModuleLoader {
 		importer: string | undefined,
         isEntry: boolean =false
     ): Promise<Module> {
-        if (!resolvedResult) { throw error() } 
-        const { resolvedId: id, path } = resolvedResult;
+        const { resolvedId: id, path,isExtrnal } = resolvedResult;
          const existingModule = this.modulesById[id];
-         if(existingModule) {
+         if(existingModule && (existingModule instanceof Module)) {
             return existingModule;
          }
-        const sourceObject = await this.loadModuleSource(id,importer)
-		const module = new Module(
-			this.graph,
-            id,
-            path,
-			this.options,
-			isEntry,
-            this,
-            sourceObject!.code,
-            sourceObject!.ast,
-		);
-		this.modulesById[id] = module;
-        this.modules.push(module);
+      
+        
+            const sourceObject = await this.loadModuleSource(id, importer)
+            const module = new Module(
+                this.graph,
+                id,
+                path,
+                this.options,
+                isEntry,
+                this,
+                sourceObject!.code,
+                sourceObject!.ast,
+            );
+            this.modulesById[id] = module;
+            this.modules.push(module);
 
-        await this.fetchAllDependencies(module);       
-        return module;
+            await this.fetchAllDependencies(module);
+            return module;
+         
     }
      
 
     private async fetchAllDependencies(entryModule: Module) {     
         const dependPromises = entryModule.dependencies.map(async (depend: string) => {
-            let  resolvedResult = await resolveId(depend, entryModule.id);
-             entryModule.resolvedIds[depend] = resolvedResult?.resolvedId ?? ''
-            return await this.loadModule(depend, false, entryModule.id)
+            let resolvedResult = await resolveId(depend, entryModule.id);
+            const {resolvedId:id, isExtrnal} = resolvedResult
+            entryModule.resolvedIds[depend] = resolvedResult?.resolvedId ?? ''
+            if (isExtrnal) {
+                const externalModule = new ExternalModule(id);
+                this.externalModules.push(externalModule)
+                this.modulesById[id] = externalModule
+                console.log(" fetchall-externalMoudle",id)
+            } else {
+
+                return await this.loadModule(depend, false, entryModule.id)
+            }
        }
         ) 
         return  Promise.all(dependPromises)
@@ -193,7 +203,9 @@ export class ModuleLoader {
         
         const id = module.resolvedIds[importDeclaration.importee]
         const traceModule = this.modulesById[id]
-
+        if (traceModule instanceof ExternalModule) {
+            return
+        }
         return this.traceExport(traceModule,importDeclaration.name!)
     }
     

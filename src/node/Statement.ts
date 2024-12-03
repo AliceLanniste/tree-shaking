@@ -250,9 +250,10 @@ export class Statement {
         
           
         //@ts-ignore
-			  if (parent&& parent.type === 'MemberExpression' && !parent.computed && node !== parent.object) {
-          return
-         }
+			  if (parent&& parent.type === 'MemberExpression' && !parent.computed && node !== parent.object)  return
+          
+        if ( parent &&parent.type === 'Property' && node !== parent.value ) return;
+
         
 				magicString.overwrite( node.start, node.end, name, true );
 			},
