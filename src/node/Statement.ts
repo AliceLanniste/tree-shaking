@@ -175,7 +175,6 @@ export class Statement {
         let idNode = node as Identifier
                
         const importSpecifier = this.module.imports[idNode.name];
-        console.log("isAssignment", importSpecifier, scope);
 
 				if ( importSpecifier && !scope.contains( idNode.name ) ) {
 					const minDepth = importSpecifier.name === '*' ?
@@ -204,7 +203,6 @@ export class Statement {
 		};
 
     if (node.type === 'AssignmentExpression') {
-       console.log("checkForWrites", node,node.type)
 			addNode( (node as AssignmentExpression).left, true );
 		}
 	}

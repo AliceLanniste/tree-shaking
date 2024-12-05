@@ -3,17 +3,30 @@ import { type rainbowOptions } from "./types/options";
 import { Graph } from "./Graph";
 import  * as magicString from "magic-string";
 import { Statement } from "./node/Statement";
+import { writeFileSync } from "fs";
+
+interface writeOptions {
+      dest: string,
+      format: string
+}
+
 
 export default async function rainbowUp(options: rainbowOptions) {
       // create a dependencies graph
       let graph = new Graph(options);
-
-      let result = await graph.render()
-
       return {
-            generate: (options:Record<string,unknown>) => result,
-            write: () => {
-                  throw new Error( 'TODO' );
+            generate: async (options: Record<string, unknown>) => {
+                  let result = await graph.render(options.format)
+                  return result
+            },
+            write:  async (options: writeOptions) => {
+                  let result = await graph.render(options.format)
+                  const { dest } = options
+                try {
+                  writeFileSync(dest, result.code)
+                } catch (error) {
+                  console.log("writerror",error)
+                }
             }
       };
 

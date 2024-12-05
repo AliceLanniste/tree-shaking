@@ -18,10 +18,10 @@ import { test } from 'vitest';
                                  } 
                               ]
                          })
-                         let result = bundle.generate({format:'cjs'})
+                         let result = bundle.generate({format:'es6'})
                          try {
-                            let fn = new Function('assert', result.code);
-                            fn(assert)
+                            let fn = new Function('require','assert', result.code);
+                            fn(require,assert)
                             console.log( "success-generate",result );
 
                          } catch (error) {

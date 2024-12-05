@@ -1,8 +1,9 @@
 import { readdirSync } from 'node:fs';
 import { describe } from 'vitest';
 import {join } from 'path';
+import { basename, dirname } from 'node:path';
 
-export function  runTestsWithSample(suitname, testDirectory, runTest) {
+export function runTestsWithSample(suitname, testDirectory, runTest) {
     describe(suitname, async ()=> await runSamples(testDirectory, runTest))
     
 }

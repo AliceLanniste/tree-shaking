@@ -1,19 +1,22 @@
 
 export default class ExternalModule {
     public id: string;
+    public name:string = ''
     public isExternal: boolean = true
 
     public canonicalNames: Record<string, string> = {}
     public defaultExportName: string | null = null
+    public needsDefault: boolean = false
+    public exportNames: string[] = []
     constructor(id:string) {
         this.id = id
      }
 
     getCanonicalName(name: string) : string {
      if (name === 'default') {
-        return `${this.id}__default`
+        return `${this.name}__default`
      } else {
-          return `${this.id}.${name}` 
+          return `${this.name}.${name}` 
     } 
         
     }
@@ -26,4 +29,12 @@ export default class ExternalModule {
             this.defaultExportName = name
         }
     }
+
+    add_export_name(names: string[]) {
+        this.exportNames = names
+    }
+
+    // get_export_name() {
+    //     return this.exportNames.join(' , ')
+    // }
 }

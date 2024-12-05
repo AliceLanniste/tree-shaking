@@ -1,12 +1,13 @@
 import { ResolveResult, type rainbowOptions } from './types/options';
 import { Module } from "./Module";
 import { type UnresolvedModule } from "./types/modules";
-import {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
+import makeLegalIdentifier, {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
 import { Graph } from "./Graph";
 import { ErrCode, error } from "./error";
 import { Statement } from "./node/Statement";
 import * as MagicString from 'magic-string';
 import ExternalModule from './ExternalModule';
+import finalise from './finalise';
 
 export class ModuleLoader {
     bodyStatement: Statement[] = [];
@@ -89,7 +90,6 @@ export class ModuleLoader {
                 const externalModule = new ExternalModule(id);
                 this.externalModules.push(externalModule)
                 this.modulesById[id] = externalModule
-                console.log(" fetchall-externalMoudle",id)
             } else {
 
                 return await this.loadModule(depend, false, entryModule.id)
@@ -148,7 +148,15 @@ export class ModuleLoader {
 
     deconflict() {
         let allReplacements: Record<string, any> = {}
-        let usedNames:Record<string,boolean> = {}
+        let usedNames: Record<string, boolean> = {}
+        	this.externalModules.forEach( module => {
+			// while we're here...
+			allReplacements[ module.id ] =  {}
+
+			// TODO is this necessary in the ES6 case?
+			let name = makeLegalIdentifier( module.id );
+            module.name = getSafeName(name);
+		});
         let i = this.ordered.length
         while (i--) {
             const module = this.ordered[i]
@@ -218,19 +226,25 @@ export class ModuleLoader {
 
     }
 
-    render() {
+    render( format: string) {
 
         const allReplacements = this.deconflict();
-let magicString = new MagicString.Bundle({ separator: '\n\n' });
-       this.ordered.forEach(module => {
+        let magicString = new MagicString.Bundle({ separator: '\n\n' });
+        this.ordered.forEach(module => {
 			const source = module.render(allReplacements[module.id]);
 			if ( source.toString().length ) {
 				magicString.addSource( source );
 			}
         });
-       
-        const code = magicString.toString();
-        console.log("redner\n",code)
+        let finaliser = finalise[format]
+        let code = ""
+        if (format === 'est') {
+            code = finaliser(this, magicString)
+        } else {
+            code = finaliser(this, magicString, {exportMode: false}, {useStrict: true})
+        }
+        
+        code = code.toString()
        return {code}
         
     }

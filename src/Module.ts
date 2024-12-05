@@ -99,6 +99,7 @@ export class Module {
 	
 		const node = statement.node as ImportDeclaration;
 		const importee = node.source.value as string;
+		const isExternal = this.markExternal(importee)
 		if (!this.dependencies.includes(importee)) { this.dependencies.push(importee) }
 		// check type of importDeclaration:ImportDefaultSpecifer,ImportSpecifer,ImportNamespaceSpecifer
 		node.specifiers.forEach(specifer => {
@@ -120,6 +121,7 @@ export class Module {
 				importee,
 				name,
 				localName,
+				isExternal
 			}
 		})
 	}
@@ -295,6 +297,14 @@ export class Module {
 			} 
 			
 			if (statement.node.type === 'ImportDeclaration') {
+				const importSouce = (statement.node as ImportDeclaration).source.value
+				let specifiers = (statement.node as ImportDeclaration).specifiers
+						.map(specifier => specifier.local.name)
+
+				if (this.markExternal(importSouce as string)) {
+					const externalModule = this.getModule(importSouce as string) as ExternalModule
+						externalModule.add_export_name(specifiers)
+				} 
 				magicString.remove(statement.start, statement.end)
 				return;
 			}
@@ -355,5 +365,8 @@ export class Module {
 			exportDefault.identifier :
 			this.replacements['Default'];
 	   return this.replacements[name] || name
-   }
+	}
+	markExternal(importee: string) {
+		return importee[0] !== '.'
+	}
 }

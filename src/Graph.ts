@@ -23,9 +23,9 @@ export class Graph {
         
     }
 
-   async render() {
+   async render( format:string) {
        let moduleGraph = await this.createModuleGraph()
-       let result = moduleGraph.render()
+       let result = moduleGraph.render(format)
        return result
     }
 }
