@@ -10,6 +10,7 @@ export interface moduleImport {
 	name: string,
 	localName: string,
 	source?: string,
+	isNamespace:boolean,
 	isExternal: boolean
 }
 

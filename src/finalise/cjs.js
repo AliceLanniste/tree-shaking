@@ -5,12 +5,18 @@ export default function cjs ( bundle, magicString, { exportMode }, options ) {
 	// TODO handle empty imports, once they're supported
 	const importBlock = bundle.externalModules
         .map(module => {
-            let export_str = module.exportNames.join(' ,')
-			let requireStatement = `var { ${export_str} } = require('${module.id}');`;
+         let requireStatement = ''
 
 			if ( module.needsDefault ) {
 				requireStatement += '\n' + ( module.needsNamed ? `var ${module.name}__default = ` : `${module.name} = ` ) +
 					`'default' in ${module.name} ? ${module.name}['default'] : ${module.name};`;
+			} else if (module.isNamespace) {
+				let export_str = module.exportNames.pop()
+				requireStatement += `var ${export_str} = require('${module.id}')`
+				
+			} else {
+			let export_str = module.exportNames.join(' ,')
+			requireStatement += `var { ${export_str} } = require('${module.id}');`;
 			}
 
 			return requireStatement;

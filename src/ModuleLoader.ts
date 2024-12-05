@@ -238,7 +238,7 @@ export class ModuleLoader {
         });
         let finaliser = finalise[format]
         let code = ""
-        if (format === 'est') {
+        if (format === 'es6') {
             code = finaliser(this, magicString)
         } else {
             code = finaliser(this, magicString, {exportMode: false}, {useStrict: true})

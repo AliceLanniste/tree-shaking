@@ -18,7 +18,7 @@ import { test } from 'vitest';
                                  } 
                               ]
                          })
-                         let result = bundle.generate({format:'es6'})
+                         let result = await bundle.generate({format:'cjs'})
                          try {
                             let fn = new Function('require','assert', result.code);
                             fn(require,assert)

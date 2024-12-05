@@ -8,6 +8,7 @@ export default class ExternalModule {
     public defaultExportName: string | null = null
     public needsDefault: boolean = false
     public exportNames: string[] = []
+    public isNamespace: boolean
     constructor(id:string) {
         this.id = id
      }
@@ -34,7 +35,8 @@ export default class ExternalModule {
         this.exportNames = names
     }
 
-    // get_export_name() {
-    //     return this.exportNames.join(' , ')
-    // }
+    setIsNamespace(isNamespace: boolean) {
+        this.isNamespace = isNamespace
+    }
+
 }

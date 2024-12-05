@@ -31,6 +31,7 @@ export class Module {
 	marked: Record<string, boolean> = {};
 	suggestNames: Record<string, string> = {};
 	needsDefault: boolean = false
+	namespaceImports: string[] = []
 	constructor(
         private readonly graph: Graph,
 		public readonly id: string,
@@ -120,8 +121,12 @@ export class Module {
 			this.imports[localName] = {
 				importee,
 				name,
+				isNamespace,
 				localName,
 				isExternal
+			}
+			if (isNamespace) {
+				this.namespaceImports.push(localName)
 			}
 		})
 	}
@@ -298,12 +303,15 @@ export class Module {
 			
 			if (statement.node.type === 'ImportDeclaration') {
 				const importSouce = (statement.node as ImportDeclaration).source.value
+			
 				let specifiers = (statement.node as ImportDeclaration).specifiers
-						.map(specifier => specifier.local.name)
-
+					.map(specifier => specifier.local.name)
 				if (this.markExternal(importSouce as string)) {
+				 let isNamespace = specifiers.length == 1 ? this.namespaceImports.includes(specifiers[0]): false
+
 					const externalModule = this.getModule(importSouce as string) as ExternalModule
-						externalModule.add_export_name(specifiers)
+					externalModule.add_export_name(specifiers)
+					externalModule.setIsNamespace(isNamespace)
 				} 
 				magicString.remove(statement.start, statement.end)
 				return;

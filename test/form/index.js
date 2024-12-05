@@ -13,7 +13,7 @@ const FORMAT = [
      (directory, config) => {
          FORMAT.forEach(item => {
              (config.skip ? test.skip : config.solo ? test.only : test)(
-                  basename(directory) + ': ' + config.description,
+                  item.format+':'+ basename(directory) + ': ' + config.description,
                   
                   async () => {
                     //   let dest = directory + '/_expected/' + 'es6.js'
