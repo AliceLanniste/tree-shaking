@@ -10,12 +10,15 @@ interface writeOptions {
       format: string
 }
 
-
+interface renderOptions {
+      [key: string]: any,
+      format: string
+}
 export default async function rainbowUp(options: rainbowOptions) {
       // create a dependencies graph
       let graph = new Graph(options);
       return {
-            generate: async (options: Record<string, unknown>) => {
+            generate: async (options: renderOptions) => {
                   let result = await graph.render(options.format)
                   return result
             },
