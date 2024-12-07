@@ -158,11 +158,12 @@ export class ModuleLoader {
             module.name = getSafeName(name);
 		});
         let i = this.ordered.length
+        //reverse modules deconflict identifier
         while (i--) {
             const module = this.ordered[i]
             allReplacements[module.id] = {}
             Object.keys( module.definitions ).forEach( name => {
-				const safeName = getSafeName( name );
+                const safeName = getSafeName(name);
 				if ( safeName !== name ) {
 					module.rename( name, safeName );
 					allReplacements[ module.id ][ name ] = safeName;
@@ -171,7 +172,6 @@ export class ModuleLoader {
 
 
         }
-
         this.ordered.forEach(module => {
             if (!module.needsDefault) return
             
@@ -182,7 +182,13 @@ export class ModuleLoader {
 				module.replacements['Default'] = defaultName;
             }
         })
-
+       
+        //importerModule.imports(specfiers && identifiers) link importeeModule.exports(specfiers | identifiers)
+        // importerModule.import[localName].importee => importerModule.resolvedIds[importee]
+        //found importeeModule(exportedModule)
+        // localExport or re-export
+        //module.exports(importee.importName) => re-export's importDeclaration or localExport definition
+        // 
         this.ordered.forEach(module => {
             Object.keys(module.imports).forEach(name => {
                 const bundleName = this.trace(module, name);
@@ -191,13 +197,14 @@ export class ModuleLoader {
                 }
                 })
         })
+        //usedNames  two: true, one: true, _two: true }
         function getSafeName(name: string) {
 		
             while (usedNames[name]) {
 				name = `_${name}`;
 			}
 
-			usedNames[ name ] = true;
+            usedNames[name] = true;
 			return name;
 
         }
@@ -206,9 +213,14 @@ export class ModuleLoader {
 
     trace(module: Module, name: string) {
         const importDeclaration = module.imports[name]
-    
+        
+        //defined in module
         if (!importDeclaration) return module.replacements[name] || name
         
+        //find export module
+        // if local export
+        // reexport
+        //reuqired export .... statement
         const id = module.resolvedIds[importDeclaration.importee]
         const traceModule = this.modulesById[id]
         if (traceModule instanceof ExternalModule) {
@@ -218,14 +230,16 @@ export class ModuleLoader {
     }
     
     traceExport(module: Module, name: string) {
-        	if ( name === 'Default' ) return module.getDefaultName();
+        if ( name === 'Default' ) return module.getDefaultName();
 
         
         const exportDeclaration = module.exports[name];
+        
 		if ( exportDeclaration ) return this.trace( module, exportDeclaration.localName );
 
     }
-
+    //main.js Two-> subdir/ two
+    //         one -> one
     render( format: string) {
 
         const allReplacements = this.deconflict();
@@ -245,6 +259,7 @@ export class ModuleLoader {
         }
         
         code = code.toString()
+        console.log("render", code)
        return {code}
         
     }
