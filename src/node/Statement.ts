@@ -16,7 +16,6 @@ function isFunctionDeclaration ( node:Node, parent:Node | null ) {
 }
 export class Statement {
   node: Node;
-  scopeNode: ScopeNode;
   start: number;
   end: number;
   defines: Record<string, any>;
@@ -41,11 +40,9 @@ export class Statement {
     this.node = node
     this.start = start
     this.end = end
-    this.scopeNode = { node: node, scope: null, type: node.type };
     this.defines = defines;
     this.modifies = modifies;
     this.dependsOn = dependOn;
-    this.type = this.scopeNode.type;
     this.scope = new Scope();
     this.module = module;
   }
@@ -54,7 +51,8 @@ export class Statement {
     if (this.isImportDeclartion()) return
    
     let scope = this.scope;
-    walkAST(this.node, {
+    let scopeNode = this.node as ScopeNode
+    walkAST(scopeNode, {
       enter(node, parent) {
         let newScope: Scope | null = null
         switch (node.type) {

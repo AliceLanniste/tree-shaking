@@ -7,7 +7,7 @@ import { ErrCode, error } from "./error";
 import { Statement } from "./node/Statement";
 import * as MagicString from 'magic-string';
 import ExternalModule from './ExternalModule';
-import finalise from './finalise';
+import finalise from './finalisers';
 
 export class ModuleLoader {
     bodyStatement: Statement[] = [];
@@ -238,8 +238,6 @@ export class ModuleLoader {
 		if ( exportDeclaration ) return this.trace( module, exportDeclaration.localName );
 
     }
-    //main.js Two-> subdir/ two
-    //         one -> one
     render( format: string) {
 
         const allReplacements = this.deconflict();
@@ -251,13 +249,9 @@ export class ModuleLoader {
 			}
         });
         let finaliser = finalise[format]
-        let code = ""
-        if (format === 'es6') {
-            code = finaliser(this, magicString)
-        } else {
-            code = finaliser(this, magicString, {exportMode: false}, {useStrict: true})
-        }
-        
+        let exportMode = false
+        let options= {userStrict:true}
+        let code = finaliser(this, magicString, {exportMode}, {options})
         code = code.toString()
         console.log("render", code)
        return {code}

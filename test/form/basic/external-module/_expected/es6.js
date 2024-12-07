@@ -1,4 +1,4 @@
-import { relative } from path
+import { relative } from path;
 
 var _path = 'foo/bar/baz';
 var path2 = 'foo/baz/bar';

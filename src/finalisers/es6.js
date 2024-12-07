@@ -1,6 +1,6 @@
 
 
-export default function es6(bundle, magicString) {
+export default function es6(bundle, magicString,{ exportMode }, options=null) {
     const importBlock = bundle.externalModules
         .map(module => {
             let specifiers = []
@@ -11,13 +11,14 @@ export default function es6(bundle, magicString) {
                 specifiers.push( `* as  ${module.exportNames.pop()}`)
             }
             else {
-                 specifiers.concat( module.exportNames)
+                specifiers =specifiers.concat(module.exportNames)
+                
             }
             return specifiers.length ?
                     module.isNamespace ? 
-                    `import ${specifiers} from ${module.id}`
-                    : `import { ${specifiers.join(', ')} } from ${module.id}`
-                :`import { ${module.id} }`
+                    `import ${specifiers} from ${module.id};`
+                    : `import { ${specifiers.join(', ')} } from ${module.id};`
+                :`import { ${module.id} };`
         })
     
     if (importBlock.length) {

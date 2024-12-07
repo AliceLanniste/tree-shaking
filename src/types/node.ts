@@ -1,15 +1,5 @@
-import { Node } from "acorn"
-import Scope from "../utils/scope"
-// 
-export type ScopeNode = {
-  node: Node,
-  scope: Scope | null,
-  type:string
+import Scope from "../utils/scope";
+import { Node } from "acorn";
+export interface ScopeNode extends Node {
+    _scope?: Scope
 }
-
-
-// export interface ScopeNode extends Node {
-//     node:Node,
-//     scope: Scope | null,
-//     type:string
-// }

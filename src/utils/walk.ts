@@ -1,5 +1,6 @@
 import { Node } from "acorn";
 import Scope from "./scope";
+import { ScopeNode } from "../types/node";
 
 let shouldSkip = false;
 let shouldAbort = false
@@ -11,9 +12,7 @@ let childKeys:Record<string,any> ={} ;
 
 
 
-interface ScopeNode extends Node {
-    _scope?: Scope
-}
+
 
 type enterFun = (node: ScopeNode, parent: ScopeNode | null) =>void
 type leaveFun = (node: ScopeNode, parent: ScopeNode | null) => void
