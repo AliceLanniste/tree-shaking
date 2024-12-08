@@ -307,11 +307,17 @@ export class Module {
 				let specifiers = (statement.node as ImportDeclaration).specifiers
 					.map(specifier => specifier.local.name)
 				if (this.markExternal(importSouce as string)) {
-				 let isNamespace = specifiers.length == 1 ? this.namespaceImports.includes(specifiers[0]): false
-
+				 let isNamespace = specifiers.length == 1 && this.namespaceImports.includes(specifiers[0])
 					const externalModule = this.getModule(importSouce as string) as ExternalModule
-					externalModule.add_export_name(specifiers)
-					externalModule.setIsNamespace(isNamespace)
+					if (specifiers.length > 1) {
+						externalModule.add_export_name(specifiers)
+						externalModule.setNeedsName(true)
+					}
+					if (isNamespace) {
+						externalModule.setIsNamespace(isNamespace)
+						externalModule.addNamespaceName(specifiers[0])
+					}
+
 				} 
 				magicString.remove(statement.start, statement.end)
 				return;
@@ -350,7 +356,7 @@ export class Module {
 				}
 			}
 		})
-
+		magicString.prepend(`//# ${this.id}.js`)
 		return magicString.trim()
 	}
 

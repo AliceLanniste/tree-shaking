@@ -6,9 +6,12 @@ export default class ExternalModule {
 
     public canonicalNames: Record<string, string> = {}
     public defaultExportName: string | null = null
+    public namespaceImport: string[] = []
     public needsDefault: boolean = false
     public exportNames: string[] = []
-    public isNamespace: boolean
+    public isNamed:boolean = false
+    public isNamespace: boolean = false
+    public needsNamed:boolean = false
     constructor(id:string) {
         this.id = id
      }
@@ -39,4 +42,11 @@ export default class ExternalModule {
         this.isNamespace = isNamespace
     }
 
+    addNamespaceName(name: string) {
+        this.namespaceImport.push(name)
+    }
+    
+    setNeedsName(needsName: boolean) {
+        this.needsNamed = needsName
+    }
 }

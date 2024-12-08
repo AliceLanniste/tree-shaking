@@ -1,24 +1,36 @@
 
 
 export default function es6(bundle, magicString,{ exportMode }, options=null) {
-    const importBlock = bundle.externalModules
-        .map(module => {
+   let importBlock =''
+     bundle.externalModules
+        .forEach(module => {
             let specifiers = []
+
             if (module.needsDefault) {
                
-            } else if (module.isNamespace) {
-                
-                specifiers.push( `* as  ${module.exportNames.pop()}`)
             }
-            else {
-                specifiers =specifiers.concat(module.exportNames)
+            if (module.isNamespace) {
+                 module.namespaceImport.forEach(aliasElement => {
+                
+                let importe = `* as  ${aliasElement}`
+                importBlock += `import ${importe} from ${module.id};\n`
+
+                })
+
+
+                    
+            }
+            
+            if (module.needsNamed) {
+                specifiers = specifiers.concat(module.exportNames)
+                importBlock += `import { ${specifiers.join(', ')} } from ${module.id};\n`
+
                 
             }
-            return specifiers.length ?
-                    module.isNamespace ? 
-                    `import ${specifiers} from ${module.id};`
-                    : `import { ${specifiers.join(', ')} } from ${module.id};`
-                :`import { ${module.id} };`
+            if (!specifiers.length) {
+                importBlock += `import {${ module.id}};\n`
+            }
+
         })
     
     if (importBlock.length) {
