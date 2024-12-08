@@ -1,7 +1,8 @@
 import { relative } from path;
 
 
-//# /root/program/tree-shaking/test/form/basic/external-module/main.js.js
+//# /root/program/tree-shaking/test/form/basic/external-module/main.js
+
 
 var _path = 'foo/bar/baz';
 var path2 = 'foo/baz/bar';

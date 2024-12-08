@@ -20,8 +20,9 @@ import { test } from 'vitest';
                          })
                          let result = await bundle.generate({format:'cjs'})
                          try {
-                            let fn = new Function('require','assert', result.code);
-                            fn(require,assert)
+                            let fn = new Function('require', 'assert', 'exports', result.code);
+                            let exports = {}
+                            fn(require,assert,exports)
                             console.log( "success-generate",result );
 
                          } catch (error) {

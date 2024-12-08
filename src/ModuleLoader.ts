@@ -84,7 +84,7 @@ export class ModuleLoader {
     private async fetchAllDependencies(entryModule: Module) {     
         const dependPromises = entryModule.dependencies.map(async (depend: string) => {
             let resolvedResult = await resolveId(depend, entryModule.id);
-            const {resolvedId:id, isExtrnal} = resolvedResult
+            const { resolvedId: id, isExtrnal } = resolvedResult
             entryModule.resolvedIds[depend] = resolvedResult?.resolvedId ?? ''
             if (isExtrnal) {
                 const externalModule = new ExternalModule(id);
@@ -143,7 +143,6 @@ export class ModuleLoader {
             this.visit(imported,seen,hasCycles)
         })
         this.ordered.push(module)
-
     }
 
     deconflict() {
@@ -232,7 +231,6 @@ export class ModuleLoader {
     traceExport(module: Module, name: string) {
         if ( name === 'Default' ) return module.getDefaultName();
 
-        
         const exportDeclaration = module.exports[name];
         
 		if ( exportDeclaration ) return this.trace( module, exportDeclaration.localName );
@@ -243,13 +241,14 @@ export class ModuleLoader {
         const allReplacements = this.deconflict();
         let magicString = new MagicString.Bundle({ separator: '\n\n' });
         this.ordered.forEach(module => {
-			const source = module.render(allReplacements[module.id]);
+            const source = module.render(allReplacements[module.id]);
+
 			if ( source.toString().length ) {
 				magicString.addSource( source );
-			}
+            }
         });
         let finaliser = finalise[format]
-        let exportMode = false
+        let exportMode =this.modules[0].exports
         let options= {userStrict:true}
         let code = finaliser(this, magicString, {exportMode}, {options})
         code = code.toString()

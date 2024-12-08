@@ -37,7 +37,7 @@ export class Module {
 		public readonly id: string,
 		public readonly path: string,
 		private readonly options: rainbowOptions,
-		isEntry: boolean,
+		public readonly isEntry: boolean,
 		public moduleLoader: ModuleLoader,
 		code: string,
 		ast: string | null
@@ -93,7 +93,10 @@ export class Module {
 			 })
 			 
 		 }); 
-		
+		if (this.isEntry) {
+			// let exportKey = Object.keys(this.exports)
+			this.exportToImport(this.exports)
+		}
 	}
 
 	addImport(statement: Statement) {
@@ -151,6 +154,8 @@ export class Module {
 				localName: identifier || 'Default',
 				isDeclaration: isDeclaration,
 				identifier,
+			   isExternal:false,
+				exportMode:'default'
 			 }
 		}
 			// export { foo, bar, baz }
@@ -158,6 +163,13 @@ export class Module {
 		// export function foo () {}
 		else if (statement.node.type == 'ExportNamedDeclaration') {
 			const exporNamedDecl = statement.node as ExportNamedDeclaration;
+			const exportName = exporNamedDecl.source? exporNamedDecl.source.value as string: ''
+			console.log("addExport", exportName);
+			       
+					const isExternal = this.markExternal(exportName)
+					
+				   
+
 			if (exporNamedDecl.specifiers.length) {
 				exporNamedDecl.specifiers.forEach(specifier => {
 					const localName = (specifier.local as Identifier).name;
@@ -166,7 +178,22 @@ export class Module {
 					this.exports[exportedName] = {
 						statement,
 						localName,
+						exportSouce:exportName,
 						exportedName,
+						isExternal,
+						exportMode:'named'
+					}
+					if (this.isEntry) {
+						this.imports[localName] = {
+							importee:exportName,
+								name:localName,
+								isNamespace:false,
+								localName,
+				                isExternal
+						}
+						// if (!this.dependencies.includes(exportName)) {
+						// 	this.dependencies.push(exportName)
+						// }
 					}
 				})
 			} else {
@@ -185,13 +212,34 @@ export class Module {
 				this.exports[ name ] = {
 					statement,
 					localName: name,
-					expression: declaration
+					isExternal:false,
+					expression: declaration,
+					exportMode:'named'
 				};
+
+
 			}
 		 }
 
 	}
     
+	exportToImport(exports: Record<string, any>) {
+		Object.keys(exports).forEach(key => {
+			if (key === 'Default') {
+				
+			} else {
+				const defineKeys = Object.keys(this.definitions)
+				if (!defineKeys.includes(key)) {
+					const { exportSouce,isExternal } = this.exports[key]
+					console.log("this.module.defe", key, this.exports[key])
+					
+					if (!this.dependencies.includes(exportSouce)) {
+							this.dependencies.push(exportSouce)
+						}
+				}
+			}
+		})
+	}
 	
 	
     
@@ -261,7 +309,6 @@ export class Module {
 				if(module instanceof Module) strongDependencies[module.id] = module;
 			} else {
 				Object.keys(statement.strongDependsOn).forEach(name => {
-
 					if (statement.defines[name] || !this.imports[name]) return;
 					//@ts-ignore
 
@@ -293,6 +340,7 @@ export class Module {
 
 		let magicString = this.magicCode
 		this.statements.forEach(statement => {
+
 			if (statement.node.type === 'ExportNamedDeclaration') {
 				let exportNamedDeclNode = statement.node as ExportNamedDeclaration;
 				if ( exportNamedDeclNode.specifiers.length ) {
@@ -307,9 +355,10 @@ export class Module {
 				let specifiers = (statement.node as ImportDeclaration).specifiers
 					.map(specifier => specifier.local.name)
 				if (this.markExternal(importSouce as string)) {
-				 let isNamespace = specifiers.length == 1 && this.namespaceImports.includes(specifiers[0])
+					let isNamespace = specifiers.length == 1 && this.namespaceImports.includes(specifiers[0])
+					let isNamed =!this.namespaceImports.includes(specifiers[0])
 					const externalModule = this.getModule(importSouce as string) as ExternalModule
-					if (specifiers.length > 1) {
+					if (isNamed) {
 						externalModule.add_export_name(specifiers)
 						externalModule.setNeedsName(true)
 					}
@@ -328,6 +377,7 @@ export class Module {
 			if (statement.isExportDeclartion()) {
 				// remove `export` from `export var foo = 42`
 				//@ts-ignore
+				
 				if (statement.node.type === 'ExportNamedDeclaration' && statement.node.declaration.type === 'VariableDeclaration') {
 					//@ts-ignore
 					magicString.remove(statement.node.start, statement.node.declaration.start);
@@ -356,7 +406,7 @@ export class Module {
 				}
 			}
 		})
-		magicString.prepend(`//# ${this.id}.js`)
+		magicString.prepend(`//# ${this.id}\n`)
 		return magicString.trim()
 	}
 

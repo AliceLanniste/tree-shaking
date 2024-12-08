@@ -36,6 +36,8 @@ export default function es6(bundle, magicString,{ exportMode }, options=null) {
     if (importBlock.length) {
         magicString.prepend( importBlock + '\n\n' );
     }
-
+    if (exportMode) {
+        
+    }
     return magicString.trim()
 }
