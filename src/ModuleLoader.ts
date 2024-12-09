@@ -229,7 +229,9 @@ export class ModuleLoader {
     }
     
     traceExport(module: Module, name: string) {
-        if ( name === 'Default' ) return module.getDefaultName();
+        if (name === 'Default') {
+            return module.getDefaultName();
+        }
 
         const exportDeclaration = module.exports[name];
         

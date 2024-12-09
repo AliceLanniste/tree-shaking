@@ -93,10 +93,11 @@ export class Module {
 			 })
 			 
 		 }); 
+
 		if (this.isEntry) {
-			// let exportKey = Object.keys(this.exports)
 			this.exportToImport(this.exports)
 		}
+
 	}
 
 	addImport(statement: Statement) {
@@ -164,7 +165,6 @@ export class Module {
 		else if (statement.node.type == 'ExportNamedDeclaration') {
 			const exporNamedDecl = statement.node as ExportNamedDeclaration;
 			const exportName = exporNamedDecl.source? exporNamedDecl.source.value as string: ''
-			console.log("addExport", exportName);
 			       
 					const isExternal = this.markExternal(exportName)
 					
@@ -183,7 +183,8 @@ export class Module {
 						isExternal,
 						exportMode:'named'
 					}
-					if (this.isEntry) {
+					if (this.isEntry && !this.imports[localName]) {
+
 						this.imports[localName] = {
 							importee:exportName,
 								name:localName,
@@ -231,7 +232,6 @@ export class Module {
 				const defineKeys = Object.keys(this.definitions)
 				if (!defineKeys.includes(key)) {
 					const { exportSouce,isExternal } = this.exports[key]
-					console.log("this.module.defe", key, this.exports[key])
 					
 					if (!this.dependencies.includes(exportSouce)) {
 							this.dependencies.push(exportSouce)
@@ -301,13 +301,14 @@ export class Module {
 		let weakDependencies: Record<string, Module> = {};
 		this.statements.forEach((statement) => {
 			const isImportDecl = statement.isImportDeclartion()
-			const specLength = isImportDecl ? (statement.node as ImportDeclaration).specifiers.length: 0
+			const specLength = isImportDecl ? (statement.node as ImportDeclaration).specifiers.length : 0
 			if (isImportDecl && !specLength) {
 				//@ts-ignore
 				const id = this.resolvedIds[ statement.node.source.value ];
 				const module = this.moduleLoader.modulesById[ id ];
 				if(module instanceof Module) strongDependencies[module.id] = module;
 			} else {
+
 				Object.keys(statement.strongDependsOn).forEach(name => {
 					if (statement.defines[name] || !this.imports[name]) return;
 					//@ts-ignore
