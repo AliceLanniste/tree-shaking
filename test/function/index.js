@@ -9,7 +9,8 @@ import { test } from 'vitest';
        (directory, config) => {
               (config.skip ? test.skip : config.solo ? test.only : test) (
                      basename(directory) + ': ' + config.description,
-                     async () => {
+                 async () => {
+                        let config =await import( directory + '/_config' );
                         let bundle = await rainbowpack({
                            input:[
                                  {
@@ -20,9 +21,17 @@ import { test } from 'vitest';
                          })
                          let result = await bundle.generate({format:'cjs'})
                          try {
-                            let fn = new Function('require', 'assert', 'exports', result.code);
-                            let exports = {}
-                            fn(require,assert,exports)
+                            let fn = new Function('require','module', 'assert', 'exports', result.code);
+                            
+                            let module = {
+                                exports: {}
+                             }
+                            fn(require, module,assert, module.exports)
+                            
+                            if (config.exports) {
+								      config.exports( module.exports );
+							      
+                            }
                             console.log( "success-generate",result );
 
                          } catch (error) {

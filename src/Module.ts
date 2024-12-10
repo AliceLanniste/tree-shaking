@@ -13,6 +13,7 @@ import { ErrCode, error } from "./error";
 import MagicString from "magic-string";
 import { ModuleLoader } from "./ModuleLoader";
 import ExternalModule from "./ExternalModule";
+import { basename } from "path";
 
 export class Module {
 	source: string;
@@ -147,17 +148,19 @@ export class Module {
 				exportDefaultDecl.declaration.id.name
 				:exportDefaultDecl.declaration.type === 'Identifier' ?
 					exportDefaultDecl.declaration.name :
-					null;
-
+					 null;
+			
+			const isLiteral = exportDefaultDecl.declaration.type === 'Literal' 
 
 			this.exports['Default'] = {
 				statement,
 				localName: identifier || 'Default',
 				isDeclaration: isDeclaration,
 				identifier,
-			   isExternal:false,
+				isLiteral,
+			    isExternal:false,
 				exportMode:'default'
-			 }
+			}
 		}
 			// export { foo, bar, baz }
 		// export var foo = 42;
@@ -400,9 +403,8 @@ export class Module {
 						magicString.overwrite(statement.start, statement.node.declaration.start + 8, `function ${canonicalName}`);
 					}
 					else {
-						//@ts-ignore
-					magicString.overwrite(statement.start,statement.node.declaration.start, `var ${canonicalName} =`)
-
+							//@ts-ignore
+					magicString.overwrite(statement.start,statement.node.declaration.start, `var ${canonicalName} = `)
 					}
 				}
 			}
@@ -422,13 +424,16 @@ export class Module {
 		  return module
 	}
 
-	getDefaultName() {
+	getDefaultName():string | null {
 		const exportDefault = this.exports['Default']
 		if (!exportDefault) return ''
-		
-		const name = exportDefault.identifier  ?
-			exportDefault.identifier :
-			this.replacements['Default'];
+		let name = exportDefault.identifier  
+				? exportDefault.identifier
+			:this.replacements['Default'];
+		if (!name && exportDefault.isLiteral) {
+			name = basename(this.id).replace(/.js/, '')
+			this.exports['Default'].exportedName = name
+		}
 	   return this.replacements[name] || name
 	}
 	markExternal(importee: string) {

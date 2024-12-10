@@ -1,29 +1,5 @@
 export default function cjs ( bundle, magicString, { exportMode }, options ) {
 	let intro = options.useStrict === false ? `` : `'use strict';\n\n`;
-	// TODO handle empty imports, once they're supported
-	// const importBlock = bundle.externalModules
-    //     .map(module => {
-    //      let requireStatement = ''
-
-	// 		if ( module.needsDefault ) {
-	// 			requireStatement += '\n' + ( module.needsNamed ? `var ${module.name}__default = ` : `${module.name} = ` ) +
-	// 				`'default' in ${module.name} ? ${module.name}['default'] : ${module.name};`;
-	// 		} else if (module.isNamespace) {
-	// 			let export_str = module.exportNames.pop()
-	// 			requireStatement += `var ${export_str} = require('${module.id}')`
-				
-	// 		} else {
-	// 		let export_str = module.exportNames.join(' ,')
-	// 		requireStatement += `var { ${export_str} } = require('${module.id}');`;
-	// 		}
-
-	// 		return requireStatement;
-	// 	})
-	// 	.join( '\n' );
-
-	// if ( importBlock ) {
-	// 	intro += importBlock + '\n\n';
-	// }
 	let importBlock = ''
 	bundle.externalModules
 		.forEach(module => {
@@ -54,8 +30,6 @@ export default function cjs ( bundle, magicString, { exportMode }, options ) {
 	
 	const exportBlock = getExportBlock(exportMode)
 	if (exportBlock) magicString.append('\n\n' + exportBlock)
-	// const exportBlock = getExportBlock( bundle, exportMode, 'module.exports =' );
-	// if ( exportBlock ) magicString.append( '\n\n' + exportBlock );
 
 	return magicString;
 }
@@ -64,7 +38,10 @@ export default function cjs ( bundle, magicString, { exportMode }, options ) {
 function getExportBlock(exports) {
 	const exportStatement=	Object.keys(exports).map(key => {
 		let { exportedName, localName, exportMode } = exports[key]
-		   if (exportMode === 'named') {
+		if (exportMode === 'default') {
+			return `module.exports = ${exportedName}`	
+		}
+			if (exportMode === 'named') {
 			return `exports.${exportedName} = ${localName}`
 
 		   }
