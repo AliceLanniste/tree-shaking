@@ -16,17 +16,16 @@ const FORMAT = [
                   item.format+':'+ basename(directory) + ': ' + config.description,
                   
                   async () => {
-                    //   let dest = directory + '/_expected/' + 'es6.js'
                       let dest =`${directory}/_expected/${item.format}.js`
                         let bundle = await rainbowpack({
                            input:[
-                                 {
-                                 name:'main',
-                                 import: directory +'/main.js'
-                                 } 
-                              ]
+                                  {
+                                  name:'main',
+                                  import: 'main.js'
+                                  } 
+                               ],
+                          cwd: directory 
                          })
-                      //  let result = bundle.generate({format:'es6'})
                        bundle.write({dest ,format:item.format})
                          
                      }

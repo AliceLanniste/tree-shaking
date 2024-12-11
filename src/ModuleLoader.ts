@@ -1,6 +1,6 @@
 import { ResolveResult, type rainbowOptions } from './types/options';
 import { Module } from "./Module";
-import { type UnresolvedModule } from "./types/modules";
+import { type unresolveId,} from "./types/modules";
 import makeLegalIdentifier, {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
 import { Graph } from "./Graph";
 import { ErrCode, error } from "./error";
@@ -23,8 +23,8 @@ export class ModuleLoader {
     
      }
 
-    async addEntryModule(unresolveModules:UnresolvedModule[], isUserDefined: boolean) {
-        const entryModules = await Promise.all(unresolveModules.map(({id, importer}) => 
+    async addEntryModule(unresolveIds:unresolveId[], isUserDefined: boolean) {
+        const entryModules = await Promise.all(unresolveIds.map(({id, importer}) => 
             this.loadModule(id, true, importer)))
                 
         if (entryModules.length === 0) {

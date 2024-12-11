@@ -1,4 +1,4 @@
-export interface UnresolvedModule {
+export interface unresolveId {
 	fileName?:string;
 	id: string;
 	importer?: string ;

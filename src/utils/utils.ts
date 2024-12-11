@@ -1,6 +1,6 @@
 import { basename, dirname, relative, resolve } from 'node:path';
 import { rainbowOptions, ResolveResult, InputOptions } from '../types/options';
-import { UnresolvedModule } from '../types/modules';
+import { unresolveId } from '../types/modules';
 
 import { readdir, readFile } from 'fs/promises';
 import { Identifier } from 'acorn';
@@ -19,11 +19,11 @@ export function normalizeOptions(options: rainbowOptions) {
     return resolvePath;
 }
 
-export function normalizeModules(entryPoints: InputOptions):UnresolvedModule[] {
-    if(entryPoints.input) {
+export function normalizeModules(entryConfig: InputOptions):unresolveId[] {
+    if(entryConfig.input) {
         
-        return entryPoints.input.map( entryOption => ({
-            id:entryOption.import,	
+        return entryConfig.input.map( entryOption => ({
+            id: entryConfig.cwd ?  resolve(entryConfig.cwd, entryOption.import): entryOption.import,	
             name: entryOption.name
         }));
     } else {

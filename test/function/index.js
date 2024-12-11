@@ -15,9 +15,10 @@ import { test } from 'vitest';
                            input:[
                                  {
                                  name:'main',
-                                 import: directory +'/main.js'
+                                 import: 'main.js'
                                  } 
-                              ]
+                           ],
+                           cwd: directory
                          })
                          let result = await bundle.generate({format:'cjs'})
                          try {

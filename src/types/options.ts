@@ -5,6 +5,7 @@ type inputOption = {name: string, import:string};
 
 export interface InputOptions {
     input?: inputOption[];
+    cwd?: string,
 }
 
 export interface OutputOptions {
