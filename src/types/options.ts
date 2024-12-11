@@ -28,7 +28,6 @@ export type NomlaizedResolveIdWithoutDefaults = {
 
 interface ModuleOptions {
 	attributes: Record<string, string>;
-	// moduleSideEffects: boolean | 'no-treeshake';
 	syntheticNamedExports: boolean | string;
 }
 
@@ -45,7 +44,12 @@ export type ResolveResult = {
 
 } 
 
+export interface writeOptions {
+      dest: string,
+      format: string
+}
 
-export interface ImportDeclarationType {
-    
+export interface renderOptions {
+      [key: string]: any,
+      format: string
 }

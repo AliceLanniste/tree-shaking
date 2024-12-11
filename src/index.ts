@@ -1,19 +1,8 @@
 
-import { type rainbowOptions } from "./types/options";
+import { type rainbowOptions,type renderOptions, type writeOptions  } from "./types/options";
 import { Graph } from "./Graph";
-import  * as magicString from "magic-string";
-import { Statement } from "./node/Statement";
 import { writeFileSync } from "fs";
 
-interface writeOptions {
-      dest: string,
-      format: string
-}
-
-interface renderOptions {
-      [key: string]: any,
-      format: string
-}
 export default async function rainbowUp(options: rainbowOptions) {
       // create a dependencies graph
       let graph = new Graph(options);
@@ -34,13 +23,4 @@ export default async function rainbowUp(options: rainbowOptions) {
       };
 
 
-}
-
-
-function generateCode( options:Record<string, unknown>={}, program:Statement[],strings:string[]) {
-      const bundler =  new magicString.Bundle();
-      return {
-            code:strings.join("\n"),
-            map: null // TODO use bundle.generateMap()
-      };
 }

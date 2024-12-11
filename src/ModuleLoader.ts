@@ -1,9 +1,9 @@
 import { ResolveResult, type rainbowOptions } from './types/options';
 import { Module } from "./Module";
 import { type unresolveId,} from "./types/modules";
-import makeLegalIdentifier, {relativeId, load, resolveId, transform, sequence } from "./utils/utils";
+import makeLegalIdentifier, {relativeId, load, resolveId, transform } from "./utils/utils";
 import { Graph } from "./Graph";
-import { ErrCode, error } from "./error";
+import { ERR_CODE, error } from "./error";
 import { Statement } from "./node/Statement";
 import * as MagicString from 'magic-string';
 import ExternalModule from './ExternalModule';
@@ -14,7 +14,7 @@ export class ModuleLoader {
     bodyString: string[] = [];
     modules: Module[] = [];
     ordered: Module[] = [];
-    modulesById: Record<string, Module|ExternalModule> = {}
+    modulesById: Record<string, Module | ExternalModule> = {}
     externalModules:ExternalModule[] = []
      constructor(
         private readonly graph: Graph,
@@ -28,45 +28,54 @@ export class ModuleLoader {
             this.loadModule(id, true, importer)))
                 
         if (entryModules.length === 0) {
-			throw new Error('You must supply options.input to rollup');
+            return error({
+                code: ERR_CODE.NOT_OPTION,
+                message:'You must supply options.input to rollup'
+            })
         }
         entryModules.forEach(entryModule => entryModule.markAllStatement(true))
-        this.sorModule()
+        this.sortModule()
         return this;
     }
 
-	private async loadModule(
-		unresolvedId: string,
-		isEntry: boolean,
-		importer: string | undefined,
-	): Promise<Module> {
-      const resolveResult = await resolveId(unresolvedId,importer)
-
+    private async loadModule(
+        unresolvedId: string,
+        isEntry: boolean,
+        importer: string | undefined,
+    ): Promise<Module> {
+        
+        
+        const resolveResult = await resolveId(unresolvedId, importer || this.options.cwd, isEntry)
         return this.fetchModule(
                 resolveResult,
                 undefined,
                 isEntry
                 )
-
     }
   
     private async fetchModule(resolvedResult: ResolveResult,
 		importer: string | undefined,
         isEntry: boolean =false
     ): Promise<Module> {
-        const { resolvedId: id, path,isExtrnal } = resolvedResult;
+        const { resolvedId: id, path } = resolvedResult;
          const existingModule = this.modulesById[id];
-         if(existingModule && (existingModule instanceof Module)) {
-            return existingModule;
+        if (existingModule) {
+             if (existingModule.isExternal) {
+                 error({
+                     code: ERR_CODE.ILLEGAL_EXTERANL_MODULE,
+                     message: `Cannot fetch external module ${id}`
+                })
+             } 
+            return Promise.resolve(<Module> existingModule);
+                 
+             
          }
       
         
             const sourceObject = await this.loadModuleSource(id, importer)
             const module = new Module(
-                this.graph,
                 id,
                 path,
-                this.options,
                 isEntry,
                 this,
                 sourceObject!.code,
@@ -83,7 +92,7 @@ export class ModuleLoader {
 
     private async fetchAllDependencies(entryModule: Module) {     
         const dependPromises = entryModule.dependencies.map(async (depend: string) => {
-            let resolvedResult = await resolveId(depend, entryModule.id);
+            let resolvedResult = await resolveId(depend, entryModule.id, false);
             const { resolvedId: id, isExtrnal } = resolvedResult
             entryModule.resolvedIds[depend] = resolvedResult?.resolvedId ?? ''
             if (isExtrnal) {
@@ -105,49 +114,41 @@ export class ModuleLoader {
                 .catch(err => {
                     let message = `Could not load ${id}`;
                     if (importer) message += ` (imported by ${relativeId(importer)})`; 
-                    error({
-                        code:ErrCode.LODE_MODULE,
-                        message: message
-                    }) 
+                        return error({
+                                code:ERR_CODE.LODE_MODULE,
+                                message: message
+                        }) 
                 }).then((source => {
                     if ( typeof source === 'string' ) return transform(source);
                 }))
     }
     //sortModule的按照dependencies,进行排序
-    sorModule() {
+    sortModule() {
         let seen: Record<string, boolean> = {}
-        let hasCycles:boolean = false
+        let hasCycles: boolean = false
         this.visit(this.modules[0], seen, hasCycles)
     }
     visit(module: Module,seen:Record<string,boolean>,hasCycles:boolean) {
         seen[module.id] = true
-        const { strongDependencies, weakDependencies } = module.collectDependencies()
-        Object.keys(strongDependencies).forEach(id => {
-            const imported = strongDependencies[id]
+        const dependencies = Object.values(module.resolvedIds);
+
+        dependencies.forEach(id => {
+            const imported = this.modulesById[id]
             if (seen[id]) {
                 hasCycles = true
                 return
             }
-
+            if (imported instanceof ExternalModule)  return
             this.visit(imported,seen,hasCycles)
         })
 
-         Object.keys(weakDependencies).forEach(id => {
-            const imported = weakDependencies[id]
-
-            if (seen[id]) {
-                hasCycles = true
-                return
-            }
-
-            this.visit(imported,seen,hasCycles)
-        })
+         
         this.ordered.push(module)
     }
 
     deconflict() {
         let allReplacements: Record<string, any> = {}
-        let usedNames: Record<string, boolean> = {}
+        let usedNames: Record<string, number> = {}
         	this.externalModules.forEach( module => {
 			// while we're here...
 			allReplacements[ module.id ] =  {}
@@ -196,16 +197,17 @@ export class ModuleLoader {
                 }
                 })
         })
-        //usedNames  two: true, one: true, _two: true }
         function getSafeName(name: string) {
-		
-            while (usedNames[name]) {
-				name = `_${name}`;
-			}
-
-            usedNames[name] = true;
-			return name;
-
+            let safeName = ''
+            if (!usedNames[name]) {
+                usedNames[name] = 1
+                safeName = name
+            } else {
+                safeName = `${name}$${usedNames[name]}`
+                usedNames[name]++
+            }
+          
+			return safeName;
         }
         return allReplacements;
     }
@@ -250,9 +252,10 @@ export class ModuleLoader {
             }
         });
         let finaliser = finalise[format]
-        let exportMode =this.modules[0].exports
+        let exportMode = this.modules[0].exports
+        let exportReplacements = allReplacements[this.modules[0].id]
         let options= {userStrict:true}
-        let code = finaliser(this, magicString, {exportMode}, {options})
+        let code = finaliser(this, magicString, {exportMode ,exportReplacements}, {options})
         code = code.toString()
         console.log("render", code)
        return {code}

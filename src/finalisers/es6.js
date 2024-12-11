@@ -1,6 +1,6 @@
 
 
-export default function es6(bundle, magicString,{ exportMode }, options=null) {
+export default function es6(bundle, magicString,{ exportMode, exportReplacements }, options=null) {
    let importBlock =''
      bundle.externalModules
         .forEach(module => {

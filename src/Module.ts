@@ -9,7 +9,7 @@ import { ExportDefaultDeclaration,
 		parse, 
 		Program } from "acorn";
 import { Comment } from "./node/Comment";
-import { ErrCode, error } from "./error";
+import { ERR_CODE, error } from "./error";
 import MagicString from "magic-string";
 import { ModuleLoader } from "./ModuleLoader";
 import ExternalModule from "./ExternalModule";
@@ -31,13 +31,12 @@ export class Module {
 	resolvedIds: Record<string,string> = {};
 	marked: Record<string, boolean> = {};
 	suggestNames: Record<string, string> = {};
-	needsDefault: boolean = false
+	needsDefault: boolean = false;
+	public isExternal: boolean = false;
 	namespaceImports: string[] = []
 	constructor(
-        private readonly graph: Graph,
 		public readonly id: string,
 		public readonly path: string,
-		private readonly options: rainbowOptions,
 		public readonly isEntry: boolean,
 		public moduleLoader: ModuleLoader,
 		code: string,
@@ -50,12 +49,12 @@ export class Module {
 		this.source = code
 
 		this.magicCode = new MagicString(code, { filename: this.id });
-		this.statements = this.parse(ast)
+		this.statements = this.parse()
 		this.analyse()
 	}
 
-	parse(ast:Program):Statement[] {
-     if(!ast) {
+	parse():Statement[] {
+     
 		try {
 			this.ast = parse(this.source, {
 				ecmaVersion:6,
@@ -64,11 +63,11 @@ export class Module {
 			})
 		} catch(err: any) {
 			error({
-			  code:ErrCode.PARSE_ERROR,
+			  code:ERR_CODE.PARSE_ERROR,
 			  message: `${err.message}`
 			})
 		}
-	 }
+	 
 	 let statements:Statement[] = [];
 	 statements = this.ast.body.map( ( node, index ) => {
 		return new Statement( node,  this, node.start,node.end);
@@ -118,7 +117,7 @@ export class Module {
 			// check this.imports duplicated localname
 				if (this.imports.hasOwnProperty(localName)) {
 					return error({
-						code:ErrCode.DUPLCATE_ERROR,
+						code:ERR_CODE.DUPLCATE_ERROR,
 						message:  `Duplicated import '${localName}'`
 					}) 
 				}
@@ -168,11 +167,8 @@ export class Module {
 		else if (statement.node.type == 'ExportNamedDeclaration') {
 			const exporNamedDecl = statement.node as ExportNamedDeclaration;
 			const exportName = exporNamedDecl.source? exporNamedDecl.source.value as string: ''
-			       
-					const isExternal = this.markExternal(exportName)
+			const isExternal = this.markExternal(exportName)
 					
-				   
-
 			if (exporNamedDecl.specifiers.length) {
 				exporNamedDecl.specifiers.forEach(specifier => {
 					const localName = (specifier.local as Identifier).name;
@@ -195,9 +191,6 @@ export class Module {
 								localName,
 				                isExternal
 						}
-						// if (!this.dependencies.includes(exportName)) {
-						// 	this.dependencies.push(exportName)
-						// }
 					}
 				})
 			} else {
@@ -296,45 +289,41 @@ export class Module {
 			this.mark( exportDecl.localName );
 		}
 	}
-	//strongDependencies,分为specifier和strongDependsOn
+	// collectDependencies() {
+	// 	let strongDependencies: Record<string, Module> = {};
+	// 	let weakDependencies: Record<string, Module> = {};
+	// 	this.statements.forEach((statement) => {
+	// 		const isImportDecl = statement.isImportDeclartion()
+	// 		const specLength = isImportDecl ? (statement.node as ImportDeclaration).specifiers.length : 0
+	// 		if (isImportDecl && !specLength) {
+	// 			//@ts-ignore
+	// 			const id = this.resolvedIds[ statement.node.source.value ];
+	// 			const module = this.moduleLoader.modulesById[ id ];
+	// 			if(module instanceof Module) strongDependencies[module.id] = module;
+	// 		} else {
+	// 			Object.keys(statement.strongDependsOn).forEach(name => {
+	// 				if (statement.defines[name] || !this.imports[name]) return;
+	// 				//@ts-ignore
 
-	//weakdependencies 来自statement.dependencies
-	collectDependencies() {
-		let strongDependencies: Record<string, Module> = {};
-		let weakDependencies: Record<string, Module> = {};
-		this.statements.forEach((statement) => {
-			const isImportDecl = statement.isImportDeclartion()
-			const specLength = isImportDecl ? (statement.node as ImportDeclaration).specifiers.length : 0
-			if (isImportDecl && !specLength) {
-				//@ts-ignore
-				const id = this.resolvedIds[ statement.node.source.value ];
-				const module = this.moduleLoader.modulesById[ id ];
-				if(module instanceof Module) strongDependencies[module.id] = module;
-			} else {
+	// 				let id = this.resolvedIds[this.imports[name].importee]
+	// 				const module = this.moduleLoader.modulesById[id]
+	// 				if(module instanceof Module) strongDependencies[module.id] = module
+	// 			});
+	// 		}
+	// 	})
 
-				Object.keys(statement.strongDependsOn).forEach(name => {
-					if (statement.defines[name] || !this.imports[name]) return;
-					//@ts-ignore
+	// 	this.statements.forEach(statement => {
+	// 		Object.keys(statement.dependsOn).forEach(name => {
 
-					let id = this.resolvedIds[this.imports[name].importee]
-					const module = this.moduleLoader.modulesById[id]
-					if(module instanceof Module) strongDependencies[module.id] = module
-				});
-			}
-		})
-
-		this.statements.forEach(statement => {
-			Object.keys(statement.dependsOn).forEach(name => {
-
-				if (statement.defines[name] || !this.imports[name]) return;
-				//@ts-ignore
-				let id = this.resolvedIds[this.imports[name].importee]
-				const module = this.moduleLoader.modulesById[id]
-				if(module instanceof Module) weakDependencies[module.id] = module
-			});
-		})
-		return { strongDependencies,weakDependencies };
-	}
+	// 			if (statement.defines[name] || !this.imports[name]) return;
+	// 			//@ts-ignore
+	// 			let id = this.resolvedIds[this.imports[name].importee]
+	// 			const module = this.moduleLoader.modulesById[id]
+	// 			if(module instanceof Module) weakDependencies[module.id] = module
+	// 		});
+	// 	})
+	// 	return { strongDependencies,weakDependencies };
+	// }
 
 	rename(name: string, newName: string) {
 		this.replacements[name] = newName
@@ -409,7 +398,7 @@ export class Module {
 				}
 			}
 		})
-		magicString.prepend(`//# ${this.id}\n`)
+		magicString.prepend(`//# ${this.path}.js\n`)
 		return magicString.trim()
 	}
 

@@ -23,8 +23,9 @@ export function normalizeModules(entryConfig: InputOptions):unresolveId[] {
     if(entryConfig.input) {
         
         return entryConfig.input.map( entryOption => ({
-            id: entryConfig.cwd ?  resolve(entryConfig.cwd, entryOption.import): entryOption.import,	
-            name: entryOption.name
+            id: entryOption.import,	
+            name: entryOption.name,
+            importer: entryConfig.cwd,
         }));
     } else {
         //Default entryPoint
@@ -34,12 +35,19 @@ export function normalizeModules(entryConfig: InputOptions):unresolveId[] {
 
 }
 
-export async function resolveId(unresolveId: string,importer: string | undefined,
+export async function resolveId(unresolveId: string,importer: string | undefined, isEntry: boolean
 ): Promise<ResolveResult> {
     //skip external module
     unresolveId = unresolveId.replace(/\.js$/, '')
-    if(importer !== undefined && !isAbsolute(unresolveId) && unresolveId[0] !== '.') return  {resolvedId:unresolveId, path:unresolveId, isExtrnal:true};
-    const resolvedId = await addJSExtension( importer ? resolve(dirname(importer), unresolveId) : resolve(unresolveId))
+    if(importer !== undefined && !isEntry && !isAbsolute(unresolveId) && unresolveId[0] !== '.') return  {resolvedId:unresolveId, path:unresolveId, isExtrnal:true};
+    
+    let needResolvePath = ''
+    if (isEntry) {
+        needResolvePath = importer ? resolve(importer, unresolveId): resolve(unresolveId)
+    } else {
+        needResolvePath = importer ? resolve(dirname(importer),unresolveId):resolve(unresolveId)
+    }
+    const resolvedId = await addJSExtension(needResolvePath)
     return {
         resolvedId,
         path: unresolveId,
@@ -89,27 +97,6 @@ export function getName ( x:Identifier ) {
 
 
 
-export async function sequence ( arr: unknown[], callback ) {
-	const len = arr.length;
-	let results = new Array( len );
-
-	let promise = Promise.resolve();
-
-	function next ( i:number ) {
-		return promise
-			.then( () => callback( arr[i]) )
-			.then( result => results[i] = result );
-	}
-
-	let i: number;
-
-	for ( i = 0; i < len; i += 1 ) {
-		promise = next( i );
-	}
-
-	await promise;
-    return results;
-}
 
 export default function makeLegalIdentifier ( str ) {
 	str = str.replace( /[^$_a-zA-Z0-9]/g, '_' );

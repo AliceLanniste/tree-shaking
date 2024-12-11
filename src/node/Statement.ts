@@ -4,7 +4,7 @@ import Scope, { NULLScope } from '../utils/scope';
 import { ScopeNode } from "../types";
 import walkAST from "../utils/walk";
 import MagicString from "magic-string";
-import { ErrCode, error } from "../error";
+import { ERR_CODE, error } from "../error";
 
 
 function isFunctionDeclaration ( node:Node, parent:Node | null ) {
@@ -121,14 +121,14 @@ export class Statement {
     let readDepth = 0;
     let writeDepth = 0;
 		if ( !this.isImportDeclartion() ) {
-			walkAST( this.node, {
+			walkAST( scopeNode, {
 				enter: ( node, parent ) => {
 					if (isFunctionDeclaration(node,parent))  writeDepth += 1
 					if ( node._scope ) scope = node._scope;
           
 
-          this.checkForReads(scope, node, parent!, !readDepth);
-          this.checkForWrites(scope,node,writeDepth)
+          this.checkForReads(scope, node, parent, !readDepth);
+          // this.checkForWrites(scope,node,writeDepth)
 				},
 				leave: ( node, parent ) => {
 
@@ -144,7 +144,7 @@ export class Statement {
     
   }
 
-  checkForReads(scope: Scope, node: Node, parent: Node , strong:boolean ) {
+  checkForReads(scope: Scope, node: Node, parent: Node | null , strong:boolean ) {
     if (node.type === 'Identifier') {
       let identifierName = (node as Identifier).name;
 
@@ -180,9 +180,9 @@ export class Statement {
 						1;  // cannot do e.g. `foo = bar`, but `foo.bar = bar` is fine
 
           if (depth < minDepth) {
-            throw error(
+            return error(
               {
-                code: ErrCode.ILLEGEAL_REASSIGN,
+                code: ERR_CODE.ILLEGEAL_REASSIGN,
                 message: `Illegal reassignment to import '${idNode.name}'`
               })
 					}

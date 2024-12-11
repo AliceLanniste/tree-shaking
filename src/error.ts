@@ -9,7 +9,9 @@ export function error( errObj: ErrorType):never {
     throw Error(errMsg)
 }
 
-export enum ErrCode {
+export enum ERR_CODE {
+    ILLEGAL_EXTERANL_MODULE ="ILLEGAL_EXTERANL_MODULE",
+    NOT_OPTION = "NOT_OPTION",
     LODE_MODULE="LODE MODULE",
     PARSE_ERROR ="PARSE ERROR",
     DUPLCATE_ERROR ="DUPLICATE ERROR",

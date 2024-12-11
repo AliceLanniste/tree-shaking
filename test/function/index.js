@@ -33,7 +33,6 @@ import { test } from 'vitest';
 								      config.exports( module.exports );
 							      
                             }
-                            console.log( "success-generate",result );
 
                          } catch (error) {
                             console.log( "error-generate",result.code );

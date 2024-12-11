@@ -2,7 +2,7 @@
 
 var path = require('path');
 
-//# /root/program/tree-shaking/test/form/basic/import-namespace-from-external-module/main.js
+//# main.js
 
 
 var path1 = 'foo/bar/baz';
