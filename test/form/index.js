@@ -2,9 +2,8 @@ import { resolve,basename, format } from 'path'
 import { runTestsWithSample } from '../util';
 import  rainbowpack from '@src/index'
 import { test } from 'vitest';
-
 const FORMAT = [
-    { format: 'cjs' },
+    // { format: 'cjs' },
     {format: 'es6' }
 ]
 

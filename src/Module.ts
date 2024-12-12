@@ -390,7 +390,11 @@ export class Module {
 						if (exporDefaulDecl.type === 'FunctionDeclaration') {
 						//@ts-ignore
 						magicString.overwrite(statement.start, statement.node.declaration.start + 8, `function ${canonicalName}`);
-					}
+						} else if (statement.node.declaration.type === 'Identifier') {
+							magicString.remove(statement.start, statement.end);
+							return
+						}
+					
 					else {
 							//@ts-ignore
 					magicString.overwrite(statement.start,statement.node.declaration.start, `var ${canonicalName} = `)
