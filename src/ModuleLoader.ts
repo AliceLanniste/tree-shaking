@@ -257,7 +257,6 @@ export class ModuleLoader {
         let options= {userStrict:true}
         let code = finaliser(this, magicString, {exportMode ,exportReplacements}, {options})
         code = code.toString()
-        console.log("render", code)
        return {code}
         
     }
