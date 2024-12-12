@@ -5,4 +5,5 @@ module.exports = {
 	exports: function (exports) {
 		assert.equal( exports, 42 );
 	},
+	solo:true
 };
