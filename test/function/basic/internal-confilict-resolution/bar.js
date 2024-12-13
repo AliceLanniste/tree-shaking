@@ -1,2 +1,2 @@
-let bar = 42;
+var bar = 42;
 export default bar;

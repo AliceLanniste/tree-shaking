@@ -158,7 +158,8 @@ export class Module {
 				identifier,
 				isLiteral,
 			    isExternal:false,
-				exportMode:'default'
+				exportMode: 'default',
+				isModified: false
 			}
 		}
 			// export { foo, bar, baz }
@@ -243,9 +244,6 @@ export class Module {
 		this.statements.forEach(statement => {
 			if (statement.isImportDeclartion()) {
 				 let module = this.getModule(statement.node.source.value)
-					 
-						
-					 
 				if (module instanceof Module)  module.markAllStatement(false)
 			} else {
 				statement.mark()
@@ -262,7 +260,6 @@ export class Module {
 			const module = this.getModule(importDeclaration.importee!)
 
 			if (importDeclaration.name === 'Default' && module instanceof Module) {
-			
 				module.needsDefault = true
 				module.suggestName(importDeclaration.name, importDeclaration.localName!)
 			} 
@@ -390,7 +387,7 @@ export class Module {
 						if (exporDefaulDecl.type === 'FunctionDeclaration') {
 						//@ts-ignore
 						magicString.overwrite(statement.start, statement.node.declaration.start + 8, `function ${canonicalName}`);
-						} else if (statement.node.declaration.type === 'Identifier') {
+						} else if (statement.node.declaration.type === 'Identifier' && canonicalName ===( replacements[statement.node.declaration.name] || statement.node.declaration.name)) {
 							magicString.remove(statement.start, statement.end);
 							return
 						}
@@ -420,9 +417,9 @@ export class Module {
 	getDefaultName():string | null {
 		const exportDefault = this.exports['Default']
 		if (!exportDefault) return ''
-		let name = exportDefault.identifier  
+		let name = exportDefault.identifier && !exportDefault.isModified 
 				? exportDefault.identifier
-			:this.replacements['Default'];
+			: this.replacements['Default'];
 		if (!name && exportDefault.isLiteral) {
 			name = basename(this.id).replace(/.js/, '')
 			this.exports['Default'].exportedName = name

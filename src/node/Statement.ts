@@ -128,7 +128,7 @@ export class Statement {
           
 
           this.checkForReads(scope, node, parent, !readDepth);
-          // this.checkForWrites(scope,node,writeDepth)
+          this.checkForWrites(scope,node,writeDepth)
 				},
 				leave: ( node, parent ) => {
 
@@ -186,7 +186,12 @@ export class Statement {
                 message: `Illegal reassignment to import '${idNode.name}'`
               })
 					}
-				}		
+        }	
+        
+        if (this.module.exports['Default'] && depth === 0 && this.module.exports['Default'].identifier === node.name) {
+          this.module.exports['Default'].isModified = true
+          console.log("default-checkForwRITES",this.module.exports['Default'])
+        }
 			}
 
 			// we only care about writes that happen a) at the top level,

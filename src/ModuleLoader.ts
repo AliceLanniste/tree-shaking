@@ -173,12 +173,14 @@ export class ModuleLoader {
 
         }
         this.ordered.forEach(module => {
+
             if (!module.needsDefault) return
             
             if (module.needsDefault) {
                 const defaultExport = module.exports['Default']
-                if (defaultExport && defaultExport.identifier) return;
-                const defaultName = getSafeName( module.suggestNames['Default'] );
+                if (defaultExport && defaultExport.identifier && !defaultExport.isModified) return;
+                const defaultName = getSafeName(module.suggestNames['Default']);
+
 				module.replacements['Default'] = defaultName;
             }
         })
