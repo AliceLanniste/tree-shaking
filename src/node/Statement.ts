@@ -190,7 +190,6 @@ export class Statement {
         
         if (this.module.exports['Default'] && depth === 0 && this.module.exports['Default'].identifier === node.name) {
           this.module.exports['Default'].isModified = true
-          console.log("default-checkForwRITES",this.module.exports['Default'])
         }
 			}
 

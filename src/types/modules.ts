@@ -1,3 +1,5 @@
+import { Statement } from "../node/Statement";
+
 export interface unresolveId {
 	fileName?:string;
 	id: string;
@@ -12,6 +14,17 @@ export interface moduleImport {
 	source?: string,
 	isNamespace:boolean,
 	isExternal: boolean
+}
+
+export interface moduleExport {
+ statement: Statement,
+ localName: string,
+ isDeclaration: boolean,
+ identifier: string,
+ isLiteral: boolean,
+ isExternal: boolean,
+ exportMode: string,
+ isModified: boolean
 }
 
 

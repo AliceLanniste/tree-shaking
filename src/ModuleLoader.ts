@@ -10,8 +10,6 @@ import ExternalModule from './ExternalModule';
 import finalise from './finalisers';
 
 export class ModuleLoader {
-    bodyStatement: Statement[] = [];
-    bodyString: string[] = [];
     modules: Module[] = [];
     ordered: Module[] = [];
     modulesById: Record<string, Module | ExternalModule> = {}
@@ -144,6 +142,7 @@ export class ModuleLoader {
 
          
         this.ordered.push(module)
+
     }
 
     deconflict() {
@@ -162,23 +161,26 @@ export class ModuleLoader {
         while (i--) {
             const module = this.ordered[i]
             allReplacements[module.id] = {}
-            Object.keys( module.definitions ).forEach( name => {
+            Object.keys(module.definitions).forEach(name => {
                 const safeName = getSafeName(name);
 				if ( safeName !== name ) {
 					module.rename( name, safeName );
 					allReplacements[ module.id ][ name ] = safeName;
-				}
+                }
 			});
 
 
         }
-        this.ordered.forEach(module => {
+                    
 
-            if (!module.needsDefault) return
+        this.ordered.forEach(module => {
+            if (!module.defaultImports) return
             
-            if (module.needsDefault) {
+            if (module.defaultImports) {
                 const defaultExport = module.exports['Default']
+
                 if (defaultExport && defaultExport.identifier && !defaultExport.isModified) return;
+
                 const defaultName = getSafeName(module.suggestNames['Default']);
 
 				module.replacements['Default'] = defaultName;
@@ -191,7 +193,7 @@ export class ModuleLoader {
         // localExport or re-export
         //module.exports(importee.importName) => re-export's importDeclaration or localExport definition
         // 
-        this.ordered.forEach(module => {
+        this.modules.forEach(module => {
             Object.keys(module.imports).forEach(name => {
                 const bundleName = this.trace(module, name);
                 if (bundleName !== name) {
@@ -233,12 +235,13 @@ export class ModuleLoader {
     }
     
     traceExport(module: Module, name: string) {
+       
         if (name === 'Default') {
             return module.getDefaultName();
         }
 
         const exportDeclaration = module.exports[name];
-        
+     
 		if ( exportDeclaration ) return this.trace( module, exportDeclaration.localName );
 
     }
@@ -246,6 +249,7 @@ export class ModuleLoader {
 
         const allReplacements = this.deconflict();
         let magicString = new MagicString.Bundle({ separator: '\n\n' });
+             
         this.ordered.forEach(module => {
             const source = module.render(allReplacements[module.id]);
 

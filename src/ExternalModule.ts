@@ -7,7 +7,7 @@ export default class ExternalModule {
     public canonicalNames: Record<string, string> = {}
     public defaultExportName: string | null = null
     public namespaceImport: string[] = []
-    public needsDefault: boolean = false
+    public defaultImports: boolean = false
     public exportNames: string[] = []
     public isNamed:boolean = false
     public isNamespace: boolean = false

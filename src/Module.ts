@@ -1,6 +1,5 @@
-import { Graph } from "./Graph";
 import { Statement } from './node/Statement';
-import { moduleImport, rainbowOptions } from "./types";
+import { moduleImport,moduleExport } from "./types";
 import { ExportDefaultDeclaration, 
 		ExportNamedDeclaration, 
 		FunctionDeclaration, 
@@ -20,7 +19,8 @@ export class Module {
     statements:Statement[] =[];
     comments:Comment[] =[];
 	magicCode:MagicString;
-    ast:Program;
+	ast: Program;
+	//import xxx from './path` ,collect `./path`
 	dependencies:string[] =[];
 	imports: Record<string,moduleImport> = {};
 	exports: Record<string, any> ={};
@@ -31,9 +31,10 @@ export class Module {
 	resolvedIds: Record<string,string> = {};
 	marked: Record<string, boolean> = {};
 	suggestNames: Record<string, string> = {};
-	needsDefault: boolean = false;
+	defaultImports: boolean = false;
 	public isExternal: boolean = false;
 	namespaceImports: string[] = []
+
 	constructor(
 		public readonly id: string,
 		public readonly path: string,
@@ -260,13 +261,13 @@ export class Module {
 			const module = this.getModule(importDeclaration.importee!)
 
 			if (importDeclaration.name === 'Default' && module instanceof Module) {
-				module.needsDefault = true
+				module.defaultImports = true
 				module.suggestName(importDeclaration.name, importDeclaration.localName!)
 			} 
 			if (module instanceof Module) module.markExport(importDeclaration.name, name)
 		} 
 		else {
-			const statement = name === 'default' ? this.exports['Default'].statement : this.definitions[name]
+			const statement = name === 'Default' ? this.exports['Default'].statement : this.definitions[name]
 			if (statement) {
 				statement.mark()
 			}
@@ -277,9 +278,9 @@ export class Module {
 	markExport(name:string, suggestedName:string) {
 		const exportDecl = module.exports[name]
 		if (exportDecl) {
-			if ( name === 'default' ) {
-				this.needsDefault = true
-				this.suggestName( 'default', suggestedName );
+			if ( name === 'Default' ) {
+				this.defaultImports = true
+				this.suggestName( 'Default', suggestedName );
 				return exportDecl.statement.mark();
 			}
 

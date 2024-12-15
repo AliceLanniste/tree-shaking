@@ -4,7 +4,7 @@ export default function cjs ( bundle, magicString, { exportMode, exportReplaceme
 	bundle.externalModules
 		.forEach(module => {
 			let specifiers = []
-			if (module.needsDefault) {
+			if (module.defaultImports) {
 				
 			}
 			if (module.isNamespace) {

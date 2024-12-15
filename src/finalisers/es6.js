@@ -6,7 +6,7 @@ export default function es6(bundle, magicString,{ exportMode, exportReplacements
         .forEach(module => {
             let specifiers = []
 
-            if (module.needsDefault) {
+            if (module.defaultImports) {
                
             }
             if (module.isNamespace) {
