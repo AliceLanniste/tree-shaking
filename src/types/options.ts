@@ -1,11 +1,44 @@
-import { resolve } from "path";
-import { normalizeModules } from '../utils/utils';
+import { Program } from "acorn";
+interface Plugin {
+    name: string,
+    options?: (options: InputOptions) => void;
+	load?: LoadHook;
+	resolveId?: ResolveIdHook;
+	transform?: TransformHook;
 
-type inputOption = {name: string, import:string};
+}
+
+interface Warning {
+    code?: string;
+	loc?: {
+		file: string;
+		line: number;
+		column: number;
+    },
+    name?: string,
+    source?: string,
+    missing?: string,
+    frame?: any
+
+}
+
+
+
+type inputOption = { name: string, import: string };
+export type SourceDescription = { code: string, ast?: Program };
+export type LoadHook = (id: string) => Promise<SourceDescription | string | void> | SourceDescription | string | void;
+export type ResolveIdHook = (id: string, parent: string) => Promise<string | boolean | void> | string | boolean | void;
+export type TransformHook = (code: string, id: String) => Promise<SourceDescription | string | void>;
+export type WarningHandler = (warn: Warning) => void;
+
 
 export interface InputOptions {
     input?: inputOption[];
     cwd?: string,
+    onWarn?: WarningHandler,
+    plugins?: Plugin[],
+    treeShake?: boolean,
+    watch?: boolean,
 }
 
 export interface OutputOptions {
