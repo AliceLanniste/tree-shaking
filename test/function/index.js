@@ -10,15 +10,17 @@ import { test } from 'vitest';
               (config.skip ? test.skip : config.solo ? test.only : test) (
                      basename(directory) + ': ' + config.description,
                  async () => {
-                        let config =await import( directory + '/_config' );
+                    let config = await import(directory + '/_config');
+                    
                         let bundle = await rainbowpack({
                            input:[
                                  {
                                  name:'main',
                                  import: 'main.js'
-                                 } 
+                              },
                            ],
-                           cwd: directory
+                           cwd: directory,
+                           ...config.options
                          })
                          let result = await bundle.generate({format:'cjs'})
                          try {

@@ -1,5 +1,5 @@
 import { Program } from "acorn";
-interface Plugin {
+export interface Plugin {
     name: string,
     options?: (options: InputOptions) => void;
 	load?: LoadHook;

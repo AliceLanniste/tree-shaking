@@ -73,9 +73,23 @@ async function  findFile(filename: string) {
 }
 
 //load module source
-export async function load ( id: string ) {
+export async function load ( id: string ):Promise<string> {
 	return await readFile( id, 'utf-8' );
 }
+
+export function sequence<T>(fnArr: ((...args: any[]) => Promise<T | void> | T | void)[]): (...args: any[]) => Promise<T | void> {
+    return function (...args: any[]) {
+        return fnArr.reduce((promise, fn) => {
+            return promise.then(result => {
+                return  result != null? result : Promise.resolve(fn(...args))
+            }
+            )
+        },
+     Promise.resolve())
+    };
+}
+
+
 
 
 export  function relativeId(id: string): string {

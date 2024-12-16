@@ -1,7 +1,7 @@
 import { ResolveResult, type rainbowOptions } from './types/options';
 import { Module } from "./Module";
 import { type unresolveId,} from "./types/modules";
-import makeLegalIdentifier, {relativeId, load, resolveId, transform } from "./utils/utils";
+import makeLegalIdentifier, {relativeId, resolveId, transform } from "./utils/utils";
 import { Graph } from "./Graph";
 import { ERR_CODE, error } from "./error";
 import { Statement } from "./node/Statement";
@@ -13,12 +13,13 @@ export class ModuleLoader {
     modules: Module[] = [];
     ordered: Module[] = [];
     modulesById: Record<string, Module | ExternalModule> = {}
-    externalModules:ExternalModule[] = []
+    externalModules: ExternalModule[] = []
+    
      constructor(
         private readonly graph: Graph,
         private readonly options: rainbowOptions,
      ) {
-    
+     
      }
 
     async addEntryModule(unresolveIds:unresolveId[], isUserDefined: boolean) {
@@ -70,7 +71,7 @@ export class ModuleLoader {
          }
       
         
-            const sourceObject = await this.loadModuleSource(id, importer)
+        const sourceObject = await this.loadModuleSource(id, importer)
             const module = new Module(
                 id,
                 path,
@@ -108,7 +109,7 @@ export class ModuleLoader {
     }
 
     private async loadModuleSource(id: string, importer: string|undefined): Promise<{code:string, ast: string | null} | undefined>  {
-           return load(id)
+           return this.graph.load(id)
                 .catch(err => {
                     let message = `Could not load ${id}`;
                     if (importer) message += ` (imported by ${relativeId(importer)})`; 

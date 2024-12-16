@@ -1,5 +1,3 @@
-// var path = require( 'path' );
-// var assert = require( 'assert' );
 import path from 'node:path';
 import assert from 'assert';
 
@@ -21,11 +19,10 @@ module.exports = {
 			importer: 'main.js',
 			source: 'path',
 			message: `'path' is imported by main.js, but could not be resolved – treating it as an external dependency`,
-			url: `https://github.com/rollup/rollup/wiki/Troubleshooting#treating-module-as-external-dependency`
 		}
 	],
 	exports: function ( exports ) {
 		assert.strictEqual( exports.path, require( 'path' ) );
-    },
-    solo:true
+	},
+	solo:true
 };

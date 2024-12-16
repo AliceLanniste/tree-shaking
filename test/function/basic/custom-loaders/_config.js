@@ -1,11 +1,11 @@
-var fs = require( 'fs' );
+import fs from "node:fs"
 
 module.exports = {
 	description: 'uses custom loaders, falling back to default',
 	options: {
 		plugins: [
 			{
-				load: function ( id ) {
+				load: function (id) {
 					if ( /foo\.js/.test( id ) ) {
 						return fs.readFileSync( id, 'utf-8' ).replace( '@', 1 );
 					}
@@ -18,6 +18,7 @@ module.exports = {
 					}
 				}
 			}
-		]
-	}
+		],
+	},
+
 };
