@@ -3,7 +3,7 @@ export default class ExternalModule {
     public id: string;
     public name:string = ''
     public isExternal: boolean = true
-
+    public needIntrop:boolean = false
     public canonicalNames: Record<string, string> = {}
     public defaultExportName: string | null = null
     public namespaceImport: string[] = []
@@ -36,6 +36,10 @@ export default class ExternalModule {
 
     add_export_name(names: string[]) {
         this.exportNames = names
+    }
+
+    setDefault(isDefault: boolean) {
+        this.defaultImports = isDefault
     }
 
     setIsNamespace(isNamespace: boolean) {
