@@ -1,6 +1,6 @@
-var path = require( 'path' );
-var fs = require( 'fs' );
-var assert = require( 'assert' );
+import path from 'path';
+import fs from 'fs';
+import assert from 'assert';
 
 var cachedModules = {
 	'@main.js': 'import foo from "./foo"; export default foo();'
@@ -20,7 +20,8 @@ module.exports = {
 				}
 			},
 			load: function ( moduleId ) {
-				if ( moduleId[0] === '@' ) {
+				if (moduleId[0] === '@') {
+					console.log("load-moduleId", moduleId);
 					return cachedModules[ moduleId ];
 				}
 
@@ -30,5 +31,5 @@ module.exports = {
 	},
 	exports: function ( exports ) {
 		assert.equal( exports, 42 );
-	}
+	},
 };

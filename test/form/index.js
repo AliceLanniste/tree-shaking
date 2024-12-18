@@ -20,10 +20,9 @@ const FORMAT = [
                            input:[
                                   {
                                   name:'main',
-                                  import: 'main.js'
+                                  import: directory+'/main.js'
                                   } 
                                ],
-                          cwd: directory 
                          })
                        bundle.write({dest ,format:item.format})
                          

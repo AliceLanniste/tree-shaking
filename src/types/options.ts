@@ -8,7 +8,7 @@ export interface Plugin {
 
 }
 
-interface Warning {
+export interface Warning {
     code?: string;
 	loc?: {
 		file: string;
@@ -16,9 +16,12 @@ interface Warning {
 		column: number;
     },
     name?: string,
+    importer?: string,
     source?: string,
     missing?: string,
-    frame?: any
+    frame?: any,
+    plugin?: string,
+    message?: string
 
 }
 
@@ -73,7 +76,7 @@ export interface ResolvedId extends ModuleOptions {
 export type ResolveResult = {
     resolvedId: string,
     path: string,
-    isExtrnal: boolean,
+    isExternal: boolean,
 
 } 
 

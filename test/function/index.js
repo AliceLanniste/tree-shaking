@@ -1,5 +1,5 @@
 import { resolve,basename } from 'path'
-import { runTestsWithSample } from '../util';
+import { compareWarnings, runTestsWithSample } from '../util';
 import  rainbowpack from '@src/index'
 import assert from "node:assert";
 import { test } from 'vitest';
@@ -11,15 +11,16 @@ import { test } from 'vitest';
                      basename(directory) + ': ' + config.description,
                  async () => {
                     let config = await import(directory + '/_config');
-                    
+                    let warnings = []
+                    const captureWarnning=(msg) => warnings.push(msg)
                         let bundle = await rainbowpack({
                            input:[
                                  {
                                  name:'main',
-                                 import: 'main.js'
+                                 import: directory+'/main.js'
                               },
                            ],
-                           cwd: directory,
+                           onWarn: captureWarnning,
                            ...config.options
                          })
                          let result = await bundle.generate({format:'cjs'})
@@ -34,6 +35,13 @@ import { test } from 'vitest';
                             if (config.exports) {
 								      config.exports( module.exports );
 							      
+                            }
+
+                            if (config.warnnings) {
+                               compareWarnings(warnnings, config.warnnings)
+                            }
+                            if (config.show) {
+                               console.log("config.show \n", result.code);
                             }
 
                          } catch (error) {

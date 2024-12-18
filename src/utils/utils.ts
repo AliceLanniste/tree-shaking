@@ -6,9 +6,14 @@ import { readdir, readFile } from 'fs/promises';
 import { Identifier } from 'acorn';
 
 const ABSOLUTE_PATH_REGEX = /^(?:\/|(?:[A-Za-z]:)?[/\\|])/;
+ const RELATIVE_PATH = /^\.?\.\//;
 
 export function isAbsolute(path: string): boolean {
 	return ABSOLUTE_PATH_REGEX.test(path);
+}
+
+export function isRelative(path: string): boolean {
+    return RELATIVE_PATH.test(path);
 }
 
 export function normalizeOptions(options: rainbowOptions) {
@@ -35,24 +40,17 @@ export function normalizeModules(entryConfig: InputOptions):unresolveId[] {
 
 }
 
-export async function resolveId(unresolveId: string,importer: string | undefined, isEntry: boolean
-): Promise<ResolveResult> {
+export async function resolveId(unresolveId: string,importer: string | undefined
+): Promise<string> {
     //skip external module
     unresolveId = unresolveId.replace(/\.js$/, '')
-    if(importer !== undefined && !isEntry && !isAbsolute(unresolveId) && unresolveId[0] !== '.') return  {resolvedId:unresolveId, path:unresolveId, isExtrnal:true};
+    if (importer !== undefined && !isAbsolute(unresolveId) && unresolveId[0] !== '.') return '';
     
-    let needResolvePath = ''
-    if (isEntry) {
-        needResolvePath = importer ? resolve(importer, unresolveId): resolve(unresolveId)
-    } else {
-        needResolvePath = importer ? resolve(dirname(importer),unresolveId):resolve(unresolveId)
-    }
+ 
+    
+        const needResolvePath = importer ? resolve(dirname(importer),unresolveId):resolve(unresolveId)
     const resolvedId = await addJSExtension(needResolvePath)
-    return {
-        resolvedId,
-        path: unresolveId,
-        isExtrnal:false
-   }     
+    return  resolvedId
     
 }
 
@@ -70,6 +68,15 @@ async function  findFile(filename: string) {
      if (files.includes(name)) {
         return filename
      }
+}
+
+export  async function isExternalFile(path: string) {
+    const name = basename(path);
+     const dir= await readdir(dirname(path));
+     if (dir.includes(name)) {
+        return  false
+     }
+     return true
 }
 
 //load module source

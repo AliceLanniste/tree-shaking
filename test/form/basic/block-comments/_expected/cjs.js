@@ -1,6 +1,6 @@
 'use strict';
 
-//# ./foo.js
+//# foo.js
 function foo () {
 	return embiggen( 6, 7 );
 }

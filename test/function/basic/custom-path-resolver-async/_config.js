@@ -30,5 +30,5 @@ module.exports = {
 	],
 	exports: function ( exports ) {
 		assert.strictEqual( exports.path, require( 'path' ) );
-	}
+	},
 };

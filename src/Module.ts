@@ -1,5 +1,5 @@
 import { Statement } from './node/Statement';
-import { moduleImport,moduleExport } from "./types";
+import { moduleImport,moduleExport, ResolveResult } from "./types";
 import { ExportDefaultDeclaration, 
 		ExportNamedDeclaration, 
 		FunctionDeclaration, 
@@ -11,7 +11,7 @@ import { Comment } from "./node/Comment";
 import { ERR_CODE, error } from "./error";
 import MagicString from "magic-string";
 import { ModuleLoader } from "./ModuleLoader";
-import ExternalModule from "./ExternalModule";
+import ExternalModule from './ExternalModule';
 import { basename } from "path";
 
 export class Module {
@@ -31,18 +31,17 @@ export class Module {
 	resolvedIds: Record<string,string> = {};
 	marked: Record<string, boolean> = {};
 	suggestNames: Record<string, string> = {};
-	defaultImports: boolean = false;
-	public isExternal: boolean = false;
+ 	defaultImports: boolean = false;
+    importRecord:Record<string,ResolveResult> = {}
 	namespaceImports: string[] = []
-
+	isExternal:boolean =false
 	constructor(
 		public readonly id: string,
-		public readonly path: string,
 		public readonly isEntry: boolean,
 		public moduleLoader: ModuleLoader,
 		code: string,
 		ast: string | null
-		) {
+	) {
 		this.setSource({ code, ast })	
     }
 
@@ -102,10 +101,9 @@ export class Module {
 	}
 
 	addImport(statement: Statement) {
-	
 		const node = statement.node as ImportDeclaration;
 		const importee = node.source.value as string;
-		const isExternal = this.markExternal(importee)
+		// const isExternal = this.markExternal(importee)
 		if (!this.dependencies.includes(importee)) { this.dependencies.push(importee) }
 		// check type of importDeclaration:ImportDefaultSpecifer,ImportSpecifer,ImportNamespaceSpecifer
 		node.specifiers.forEach(specifer => {
@@ -122,7 +120,7 @@ export class Module {
 						message:  `Duplicated import '${localName}'`
 					}) 
 				}
-		
+			const isExternal = this.markExternal(importee)
 			this.imports[localName] = {
 				importee,
 				name,
@@ -130,12 +128,13 @@ export class Module {
 				localName,
 				isExternal
 			}
+
 			if (isNamespace) {
 				this.namespaceImports.push(localName)
 			}
 		})
 	}
-
+	//ExportDefaultDeclaration | ExportNamedDeclaration | ExportAllDeclaration
 	addExport(statement: Statement) {		
 		//export default function foo() {}  declaration: FunctionDeclaration
 		//export default foo;    declaration: Identifier
@@ -143,12 +142,16 @@ export class Module {
 		if (statement.node.type == 'ExportDefaultDeclaration') {
 			let exportDefaultDecl = statement.node as ExportDefaultDeclaration;
 			const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
-			const identifier = isDeclaration ?
-				//@ts-ignore
-				exportDefaultDecl.declaration.id.name
-				:exportDefaultDecl.declaration.type === 'Identifier' ?
-					exportDefaultDecl.declaration.name :
-					 null;
+		
+			let identifier = ''
+			let functionDefaultConvert = <FunctionDeclaration>(<ExportDefaultDeclaration>exportDefaultDecl).declaration
+			let identifierDefaulConvert = <Identifier>(<ExportDefaultDeclaration>exportDefaultDecl).declaration;
+			if (functionDefaultConvert.id) {
+				identifier = functionDefaultConvert.id.name
+			} else {
+				identifier = identifierDefaulConvert.name
+			}		
+			
 			
 			const isLiteral = exportDefaultDecl.declaration.type === 'Literal' 
 
@@ -175,7 +178,6 @@ export class Module {
 				exporNamedDecl.specifiers.forEach(specifier => {
 					const localName = (specifier.local as Identifier).name;
 					const exportedName = (specifier.exported as Identifier).name;
-
 					this.exports[exportedName] = {
 						statement,
 						localName,
@@ -185,7 +187,6 @@ export class Module {
 						exportMode:'named'
 					}
 					if (this.isEntry && !this.imports[localName]) {
-
 						this.imports[localName] = {
 							importee:exportName,
 								name:localName,
@@ -231,7 +232,7 @@ export class Module {
 				if (!defineKeys.includes(key)) {
 					const { exportSouce,isExternal } = this.exports[key]
 					
-					if (!this.dependencies.includes(exportSouce)) {
+					if (!this.dependencies.includes(exportSouce) && exportSouce) {
 							this.dependencies.push(exportSouce)
 						}
 				}
@@ -244,7 +245,12 @@ export class Module {
 	markAllStatement(isEntryModule: boolean) {
 		this.statements.forEach(statement => {
 			if (statement.isImportDeclartion()) {
-				 let module = this.getModule(statement.node.source.value)
+				let module = this.getModule(statement.node.source.value)
+				if (module instanceof ExternalModule) {
+					let specifiers = (statement.node as ImportDeclaration).specifiers
+						.map(specifier => specifier.local.name)
+					specifiers.forEach(specifier => this.imports[specifier].isExternal = true)
+				}
 				if (module instanceof Module)  module.markAllStatement(false)
 			} else {
 				statement.mark()
@@ -328,7 +334,6 @@ export class Module {
 	}
     
 	render(replacements:Record<string, string>) {
-
 		let magicString = this.magicCode
 		this.statements.forEach(statement => {
 
@@ -342,12 +347,12 @@ export class Module {
 			
 			if (statement.node.type === 'ImportDeclaration') {
 				const importSouce = (statement.node as ImportDeclaration).source.value
-			
 				let specifiers = (statement.node as ImportDeclaration).specifiers
 					.map(specifier => specifier.local.name)
-				if (this.markExternal(importSouce as string)) {
+				if (this.imports[specifiers[0]].isExternal) {
 					let isNamespace = specifiers.length == 1 && this.namespaceImports.includes(specifiers[0])
-					let isNamed =!this.namespaceImports.includes(specifiers[0])
+					let isNamed = this.imports[specifiers[0]].name !== 'Default'  && !this.namespaceImports.includes(specifiers[0]);
+					let isDefault = specifiers.length == 1 && statement.node.specifiers[0].type === 'ImportDefaultSpecifier'
 					const externalModule = this.getModule(importSouce as string) as ExternalModule
 					if (isNamed) {
 						externalModule.add_export_name(specifiers)
@@ -356,6 +361,10 @@ export class Module {
 					if (isNamespace) {
 						externalModule.setIsNamespace(isNamespace)
 						externalModule.addNamespaceName(specifiers[0])
+					}
+					if (isDefault) {
+						externalModule.setDefault(isDefault)
+						externalModule.name = specifiers[0]
 					}
 
 				} 
@@ -383,7 +392,8 @@ export class Module {
 					//import bar from './bar'
 					// var bar = 40;
 					//要把 default =bar
-					const canonicalName = this.getDefaultName();
+					let canonicalName = this.getDefaultName();
+				
 					let exporDefaulDecl = (statement.node as ExportDefaultDeclaration).declaration
 						if (exporDefaulDecl.type === 'FunctionDeclaration') {
 						//@ts-ignore
@@ -400,7 +410,7 @@ export class Module {
 				}
 			}
 		})
-		magicString.prepend(`//# ${this.path}.js\n`)
+		magicString.prepend(`//# ${basename(this.id)}\n`)
 		return magicString.trim()
 	}
 
@@ -425,9 +435,14 @@ export class Module {
 			name = basename(this.id).replace(/.js/, '')
 			this.exports['Default'].exportedName = name
 		}
+			if (!name && this.isEntry) {
+				name = '_main'
+				this.exports['Default'].exportedName = name
+			}
 	   return this.replacements[name] || name
 	}
 	markExternal(importee: string) {
-		return importee[0] !== '.'
+		const ExternalModuleNames = this.moduleLoader.externalModules.map(module => module.id)
+		return ExternalModuleNames.includes(importee)
 	}
 }

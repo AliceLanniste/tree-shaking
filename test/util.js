@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs';
 import { describe } from 'vitest';
 import {join } from 'path';
 import { basename, dirname } from 'node:path';
+import { assert } from 'assert';
 
 export function runTestsWithSample(suitname, testDirectory, runTest) {
     describe(suitname, async ()=> await runSamples(testDirectory, runTest))
@@ -35,3 +36,25 @@ async function   loadConfigAndRunTest( directory, runTest) {
 }
 
 
+export function compareWarnings(actual, expect) {
+    assert.deepEqual(actual.map(warning => {
+        const clone = Object.assign({}, warning)
+        delete clone.toString;
+
+        if (clone.frame) {
+            clone.frame = clone.frame.frame.replace( /\s+$/gm, '' );
+        }
+        return clone
+    }),
+        expect.map(warning => {
+         if (warning.frame) {
+            warning.frame = deindent(warning.frame)
+         }
+        return warning
+     })
+    )
+}
+
+function deindent(str) {
+	return str.slice(1).replace(/^\t+/gm, '').replace(/\s+$/gm, '').trim();
+}

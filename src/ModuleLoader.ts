@@ -1,13 +1,14 @@
-import { ResolveResult, type rainbowOptions } from './types/options';
+import { ResolveResult, type rainbowOptions, ResolvedId } from './types/options';
 import { Module } from "./Module";
 import { type unresolveId,} from "./types/modules";
-import makeLegalIdentifier, {relativeId, resolveId, transform } from "./utils/utils";
+import makeLegalIdentifier, {isExternalFile, isRelative, relativeId, resolveId, transform } from "./utils/utils";
 import { Graph } from "./Graph";
 import { ERR_CODE, error } from "./error";
 import { Statement } from "./node/Statement";
 import * as MagicString from 'magic-string';
 import ExternalModule from './ExternalModule';
 import finalise from './finalisers';
+import { basename, resolve } from 'path';
 
 export class ModuleLoader {
     modules: Module[] = [];
@@ -42,39 +43,38 @@ export class ModuleLoader {
         isEntry: boolean,
         importer: string | undefined,
     ): Promise<Module> {
-        
-        
-        const resolveResult = await resolveId(unresolvedId, importer || this.options.cwd, isEntry)
+        const resolveResult = await this.graph.resolveId(unresolvedId, importer)
         return this.fetchModule(
-                resolveResult,
+                <string>resolveResult,
                 undefined,
                 isEntry
                 )
     }
   
-    private async fetchModule(resolvedResult: ResolveResult,
+    private async fetchModule(id:string,
 		importer: string | undefined,
         isEntry: boolean =false
     ): Promise<Module> {
-        const { resolvedId: id, path } = resolvedResult;
-         const existingModule = this.modulesById[id];
-        if (existingModule) {
-             if (existingModule.isExternal) {
-                 error({
-                     code: ERR_CODE.ILLEGAL_EXTERANL_MODULE,
-                     message: `Cannot fetch external module ${id}`
-                })
-             } 
-            return Promise.resolve(<Module> existingModule);
+        if (this.modulesById[id]) return null;
+
+        // const { resolvedId: id, path ,isExternal} = resolvedResult;
+        //  const existingModule = this.modulesById[id];
+        // if (existingModule) {
+        //      if (existingModule.isExternal) {
+        //          error({
+        //              code: ERR_CODE.ILLEGAL_EXTERANL_MODULE,
+        //              message: `Cannot fetch external module ${id}`
+        //         })
+        //      } 
+        //     return Promise.resolve(<Module> existingModule);
                  
              
-         }
+        //  }
       
         
         const sourceObject = await this.loadModuleSource(id, importer)
             const module = new Module(
                 id,
-                path,
                 isEntry,
                 this,
                 sourceObject!.code,
@@ -82,26 +82,46 @@ export class ModuleLoader {
             );
             this.modulesById[id] = module;
             this.modules.push(module);
+            if (isEntry) {
+                let keyId = basename(id).replace(/.js/, '')
 
+            module.resolvedIds[keyId] = id;
+            }
             await this.fetchAllDependencies(module);
             return module;
          
     }
      
 
-    private async fetchAllDependencies(entryModule: Module) {     
+    private async fetchAllDependencies(entryModule: Module) {
         const dependPromises = entryModule.dependencies.map(async (depend: string) => {
-            let resolvedResult = await resolveId(depend, entryModule.id, false);
-            const { resolvedId: id, isExtrnal } = resolvedResult
-            entryModule.resolvedIds[depend] = resolvedResult?.resolvedId ?? ''
-            if (isExtrnal) {
-                const externalModule = new ExternalModule(id);
-                this.externalModules.push(externalModule)
-                this.modulesById[id] = externalModule
-            } else {
+            let resolvedId = await this.graph.resolveId(depend, entryModule.id);
+            const externalId =
+					resolvedId ||
+					(isRelative(depend) ? resolve(module.id, '..', depend) : depend);
+            const isExternal = await isExternalFile(<string>externalId)
+            if (!resolveId &&isExternal) {
+                this.graph.warn({
+                    code: 'UNRESOLVED_IMPORT',
+                    source: depend,
+                    importer: module.path,
+                    message: `'${depend}' is imported by ${module.path
+                        }, but could not be resolved – treating it as an external dependency`,
+                });
 
+            } 
+            if (isExternal) {
+                const externalModule = new ExternalModule(depend);
+                 entryModule.resolvedIds[depend] = <string> externalId 
+
+                this.externalModules.push(externalModule)
+                this.modulesById[depend] = externalModule
+            } else {
+                    entryModule.resolvedIds[depend]= <string>resolvedId
                 return await this.loadModule(depend, false, entryModule.id)
-            }
+            } 
+
+        
        }
         ) 
         return  Promise.all(dependPromises)
@@ -109,7 +129,7 @@ export class ModuleLoader {
     }
 
     private async loadModuleSource(id: string, importer: string|undefined): Promise<{code:string, ast: string | null} | undefined>  {
-           return this.graph.load(id)
+        return this.graph.load(id)
                 .catch(err => {
                     let message = `Could not load ${id}`;
                     if (importer) message += ` (imported by ${relativeId(importer)})`; 
@@ -137,7 +157,8 @@ export class ModuleLoader {
                 hasCycles = true
                 return
             }
-            if (imported instanceof ExternalModule)  return
+            if (imported instanceof ExternalModule) return
+
             this.visit(imported,seen,hasCycles)
         })
 
@@ -227,11 +248,13 @@ export class ModuleLoader {
         // if local export
         // reexport
         //reuqired export .... statement
+        
         const id = module.resolvedIds[importDeclaration.importee]
         const traceModule = this.modulesById[id]
         if (traceModule instanceof ExternalModule) {
             return
         }
+
         return this.traceExport(traceModule,importDeclaration.name!)
     }
     
@@ -247,7 +270,6 @@ export class ModuleLoader {
 
     }
     render( format: string) {
-
         const allReplacements = this.deconflict();
         let magicString = new MagicString.Bundle({ separator: '\n\n' });
              
@@ -258,6 +280,7 @@ export class ModuleLoader {
 				magicString.addSource( source );
             }
         });
+
         let finaliser = finalise[format]
         let exportMode = this.modules[0].exports
         let exportReplacements = allReplacements[this.modules[0].id]

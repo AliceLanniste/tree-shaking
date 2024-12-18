@@ -58,7 +58,9 @@ export class Statement {
         switch (node.type) {
           case "FunctionDeclaration":
             let functNode = node as FunctionDeclaration;
-            scope.addDeclaration(functNode.id.name, node, false);
+            const funcIdentifier = (parent && parent.type === 'ExportDefaultDeclaration'&& !functNode.id)  ?
+              'Default' : functNode.id.name;
+            scope.addDeclaration(funcIdentifier, node, false);
 
           case "BlockStatement":
             if (parent && /Function/.test(parent.type)) {
