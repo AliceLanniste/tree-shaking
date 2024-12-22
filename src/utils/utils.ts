@@ -1,5 +1,5 @@
 import { basename, dirname, relative, resolve } from 'node:path';
-import { rainbowOptions, ResolveResult, InputOptions } from '../types/options';
+import { rainbowOptions, ResolveResult, InputOptions, SourceDescription } from '../types/options';
 import { unresolveId } from '../types/modules';
 
 import { readdir, readFile } from 'fs/promises';
@@ -105,7 +105,7 @@ export  function relativeId(id: string): string {
 }
 
 //transform source to transform OAjec
-export function transform(source: string):{code:string, ast: string | null} {
+export function transform(source: string):SourceDescription {
     return {
         code: source,
         ast: null
