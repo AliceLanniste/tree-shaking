@@ -11,7 +11,7 @@ export default class Variable {
         this.name = name
         this.safeName = safeName || null;
     }
-
+ 
     getName() {
         return this.safeName || this.name
     }
