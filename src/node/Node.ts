@@ -35,17 +35,35 @@ export class NodeBase implements Node {
     constructor(astNode: GenericNode,parentScope:Scope) { 
         this.keys = STORED_KEYS[astNode.type] || getNodeKeys(astNode);
         this.createScope(parentScope)
+        this.parseNode(astNode)
+        this.initialise()
     }
 
     createScope(scope: Scope) {
         this.scope = scope
     }
+
+    parseNode(node: GenericNode) {
+
+    }
     
     initialise() {
-
+        this.included =true
     }
     include() { 
         this.included = true;
+        for (const key of this.keys) {
+            const value = (<GenericNode>this)[key]
+            if (value == null)  continue
+            if (Array.isArray(value)) {
+                for (const child of value) {
+                    if (child)  child.include()
+                }
+            } else {
+                value.include()
+            }    
+            
+        }
     }
     
     shouldBeIncluded(): boolean {
