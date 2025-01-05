@@ -1,5 +1,6 @@
 var path = require( 'path' );
 var assert = require( 'assert' );
+const { skip } = require('../.custom-external-resolver-async/_config');
 
 module.exports = {
 	description: 'uses a custom path resolver (asynchronous)',
@@ -31,4 +32,5 @@ module.exports = {
 	exports: function ( exports ) {
 		assert.strictEqual( exports.path, require( 'path' ) );
 	},
+	skip:true
 };

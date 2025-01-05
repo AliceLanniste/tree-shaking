@@ -1,3 +1,4 @@
+import ExternalVariable from "./variables/ExternalVariable";
 
 export default class ExternalModule {
     public id: string;
@@ -9,11 +10,14 @@ export default class ExternalModule {
     public namespaceImport: string[] = []
     public defaultImports: boolean = false
     public exportNames: string[] = []
-    public isNamed:boolean = false
-    public isNamespace: boolean = false
-    public needsNamed:boolean = false
+    public exportedNamed:boolean = false
+    public exportedNamespace: boolean = false
+    public needsNamed: boolean = false
+	declarations: { [name: string]: ExternalVariable };
+
     constructor(id:string) {
         this.id = id
+        this.declarations = Object.create(null)
      }
 
     getCanonicalName(name: string) : string {
@@ -42,9 +46,6 @@ export default class ExternalModule {
         this.defaultImports = isDefault
     }
 
-    setIsNamespace(isNamespace: boolean) {
-        this.isNamespace = isNamespace
-    }
 
     addNamespaceName(name: string) {
         this.namespaceImport.push(name)
@@ -52,5 +53,11 @@ export default class ExternalModule {
     
     setNeedsName(needsName: boolean) {
         this.needsNamed = needsName
+    }
+
+    traceExport(name: string) {
+        if (name !== 'default' && name !== '*') this.exportedNamed =true;
+		if (name === '*') this.exportedNamespace = true;
+        return this.declarations[name] ||((this.declarations[name] = new ExternalVariable(this, name)))
     }
 }

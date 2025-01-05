@@ -1,29 +1,47 @@
 import { Statement } from './node/Statement';
 import { moduleImport,moduleExport, ResolveResult } from "./types";
-import { ExportDefaultDeclaration, 
-		ExportNamedDeclaration, 
-		FunctionDeclaration, 
-		Identifier,
-		ImportDeclaration, 
+import {  
 		parse, 
-		Program } from "acorn";
-import { Comment } from "./node/Comment";
+	    Program as AcornProgram
+} from "acorn";
+import { Comment } from "./node/shared/Comment";
 import { ERR_CODE, error } from "./error";
 import MagicString from "magic-string";
-import { ModuleLoader } from "./ModuleLoader";
+import { ModuleLoader } from './ModuleLoader';
 import ExternalModule from './ExternalModule';
-import { basename } from "path";
-
+import { basename, extname } from "path";
+import { ExportAllDeclaration  } from './node/ExportAllDeclaration';
+import { isExportDefaultDeclaration, ExportDefaultDeclaration } from './node/ExportDefaultDeclaration';
+import { ExportNamedDeclaration} from './node/ExportNamedDeclaration';
+import { ImportDeclaration, nodeConstructor } from './node';
+import { NODETYPE } from './node/shared/NodeType';
+import FunctionDeclaration from './node/FunctionDeclaration';
+import Identifier from './node/Identifier';
+import ImportSpecifier from './node/ImportSpecifier';
+import { ASTContext } from './node/utils';
+import Program from './node/Program';
+import ModuleScope from './scopes/ModuleScope';
+import Variable from './variables/Variable';
 export class Module {
+	type: 'Module';
+	id: string;
 	source: string;
-    statements:Statement[] =[];
-    comments:Comment[] =[];
-	magicCode:MagicString;
+	comments: Comment[] = [];
+	statements: Statement[] = [];
+	originAST: AcornProgram;
 	ast: Program;
+	magicCode: MagicString;
+	astContext: ASTContext;
 	//import xxx from './path` ,collect `./path`
 	dependencies:string[] =[];
 	imports: Record<string,moduleImport> = {};
-	exports: Record<string, any> ={};
+	exports: Record<string, any> = {};
+	exportAllSources: string[] = [];
+	reexports: Record<string, any> = {};
+
+	isEntry: boolean;
+	isExternal: boolean;
+
     definitions:Record<string,Statement> = {};
 	modifications: Record<string, Statement> = {};
 	replacements: Record<string, string> = {};
@@ -32,31 +50,159 @@ export class Module {
 	marked: Record<string, boolean> = {};
 	suggestNames: Record<string, string> = {};
  	defaultImports: boolean = false;
-    importRecord:Record<string,ResolveResult> = {}
-	namespaceImports: string[] = []
-	isExternal:boolean =false
+	importRecord: Record<string, ResolveResult> = {};
+	namespaceImports: string[] = [];
+	scope: ModuleScope;
+	private loader: ModuleLoader;
 	constructor(
-		public readonly id: string,
-		public readonly isEntry: boolean,
-		public moduleLoader: ModuleLoader,
+	 id: string,
+	 isEntry: boolean,
+	moduleLoader: ModuleLoader,
 		code: string,
-		ast: string | null
+		ast: Program | undefined
 	) {
+		this.id = id
+		this.isEntry = isEntry
+		this.loader = moduleLoader
 		this.setSource({ code, ast })	
     }
 
-	setSource({code, ast}) {
+	setSource({code ,ast}) {
 		this.source = code
 
 		this.magicCode = new MagicString(code, { filename: this.id });
-		this.statements = this.parse()
-		this.analyse()
+		this.originAST = this.parse2(code)
+
+	    
+		this.astContext = {
+			addExport: this.addExport.bind(this),
+			addImport: this.addImport.bind(this),
+			code: code,
+			magicString: this.magicCode,
+			filename: this.id,
+			nodeConstructor,
+			imports: this.imports,
+			exports: this.exports,
+			getExports: this.getExports.bind(this),
+			getModuleName: this.baseName.bind(this),
+			traceVariable: this.traceVariable.bind(this),
+		}
+
+		this.scope = new ModuleScope(this.loader.scope, this.astContext);
+		this.ast = new Program(
+			this.originAST,
+			{ type: 'Module', context: this.astContext },
+			this.scope
+		);
+	}
+     
+	parse2(code: string) {
+   		return this._parseAST(code)
 	}
 
-	parse():Statement[] {
-     
+
+	addImport(node: ImportDeclaration) {
+		const source = <string>node.source.value
+		if (!this.dependencies.includes(source))  this.dependencies.push(source)
+		const specifiers = node.specifiers
+	    for (const specifier of specifiers) {
+			const localName = specifier.local.name;
+			if (this.imports[localName]) {
+				throw Error(" duplicate import")
+			}
+
+			const isDefault = specifier.type === NODETYPE.IMPORT_DEFAULT_SPECIFIER ;
+			const isNamespace = specifier.type === NODETYPE.IMPORT_NAMESPACE_SPECIFIER;
+
+			const name = isDefault
+				? 'default'
+				: isNamespace
+					? '*'
+					: (<ImportSpecifier>specifier).imported.name;
+
+
+			this.imports[localName] = {
+				source, specifier, name, module: null
+			}
+		}	
+		
+	}
+
+	addExport(node: ExportAllDeclaration | ExportDefaultDeclaration | ExportNamedDeclaration) {
+		const source = (<ExportAllDeclaration>node).source && (<ExportAllDeclaration>node).source.value
+		//export * from 'xxxx'
+		//export {xxx} from 'xxxx'
+		if (source) {
+			if (this.dependencies.includes(source)) this.dependencies.push(source)
+			
+			if (node.type === NODETYPE.EXPORT_ALL) {
+				this.exportAllSources.push(source)
+			} else {
+				for (const specifier of (<ExportNamedDeclaration>node).specifiers) {
+					const name = specifier.exported.name;
+					if (this.exports[name] || this.reexports[name]) {
+						throw Error('Duplicate export')
+					}
+					this.reexports[name] = {
+						start: specifier.span.start,
+						source,
+						local: specifier.local.name,
+						module: null,
+						moduleId: null,
+					}
+				}
+			}
+		}else if (isExportDefaultDeclaration(node)) {
+			// export default function foo () {}
+			// export default foo;
+			// export default 42;
+		const identifier =
+				((<FunctionDeclaration>node.declaration).id &&
+					(<FunctionDeclaration>node.declaration).id.name) ||
+				(<Identifier>node.declaration).name
+			if (this.exports.default) {
+				throw Error("duplicate export default")
+			}
+			this.exports.default = {
+				localName: 'default',
+				identifier
+			}
+		} else if ((<ExportNamedDeclaration>node).declaration) {
+			// export var { foo, bar } = ...
+			// export var foo = 42;
+			// export var a = 1, b = 2, c = 3;
+			// export function foo () {}
+			const declaration = (<ExportNamedDeclaration>node).declaration
+			if (declaration.type === NODETYPE.VARIABLE_DECLARATION) {
+
+				for (const decl of declaration.declarations) {
+					const localName = decl.id.name;
+					this.exports[localName] = {localName}
+				}
+			} else {
+				// export function foo () {}
+				const localName = declaration.id.name;
+				this.exports[localName] = {localName}
+	
+			}
+		} else {
+			//export {a, b, c}
+			for (const specifier of (<ExportNamedDeclaration>node).specifiers) {
+				const localName = specifier.local.name;
+				const exportedName = specifier.exported.name;
+
+			   if (this.exports[exportedName] || this.reexports[exportedName]) {
+				throw Error("Duplicate export")
+			  }
+			  this.exports[exportedName] = {localName}
+			}
+
+		}
+	}
+
+	private _parseAST(code: string) {
 		try {
-			this.ast = parse(this.source, {
+			return parse(code, {
 				ecmaVersion:6,
 				sourceType:"module",
 				onComment: ( block, text, start, end ) => this.comments.push({ block, text, start, end })
@@ -67,352 +213,85 @@ export class Module {
 			  message: `${err.message}`
 			})
 		}
-	 
-	 let statements:Statement[] = [];
-	 statements = this.ast.body.map( ( node, index ) => {
-		return new Statement( node,  this, node.start,node.end);
-	});
-	statements.forEach((statement, index) =>
-	 statement.next = statement[index+1]? statement[index+1].start : statement.end)
-	 return statements;
-	}	
 
+	}
 
+	linkDependencies() {
+		const resolveSpecifier = (specifiers: {
+			[name: string]: moduleImport
+		}) => {
+			for (const key of Object.keys(specifiers)) {
+				const specifier = specifiers[key];
+				const id = this.resolvedIds[specifier.source];
+				specifier.module = this.loader.modulesById[id];
+			}
+		}
+		resolveSpecifier(this.imports)
+	}
 
-	analyse() {
-		if(!this.statements) return;
-         this.statements.forEach(statement => {
-			if (statement.isImportDeclartion()) this.addImport(statement)
-			else if (statement.isExportDeclartion()) this.addExport(statement)
-			 statement.analyse()
-			 Object.keys(statement.defines).forEach(name => {
-				 this.definitions[name] =statement
-			 })
-			  Object.keys(statement.modifies).forEach(name => {
-				 this.modifications[name] =statement
-			 })
-			 
-		 }); 
+	bindReferences() {
+		this.ast.bind()
+	}
 
-		if (this.isEntry) {
-			this.exportToImport(this.exports)
+	traceExport(name:string) {
+		const exportDeclaration = this.exports[name];
+		if (exportDeclaration) {
+			const name = exportDeclaration.localName;
+			const declaration = this.traceVariable(name);
+			return declaration || this.loader.scope.findVariable(name);
 		}
 
 	}
-
-	addImport(statement: Statement) {
-		const node = statement.node as ImportDeclaration;
-		const importee = node.source.value as string;
-		// const isExternal = this.markExternal(importee)
-		if (!this.dependencies.includes(importee)) { this.dependencies.push(importee) }
-		// check type of importDeclaration:ImportDefaultSpecifer,ImportSpecifer,ImportNamespaceSpecifer
-		node.specifiers.forEach(specifer => {
-			const isDefault = specifer.type == "ImportDefaultSpecifier";
-			const isNamespace = specifer.type == "ImportNamespaceSpecifier";
-
-			const localName = specifer.local.name;
-			const name = isDefault ? 'Default': isNamespace ? '*' : (specifer.imported as Identifier).name;
-			
-			// check this.imports duplicated localname
-				if (this.imports.hasOwnProperty(localName)) {
-					return error({
-						code:ERR_CODE.DUPLCATE_ERROR,
-						message:  `Duplicated import '${localName}'`
-					}) 
-				}
-			const isExternal = this.markExternal(importee)
-			this.imports[localName] = {
-				importee,
-				name,
-				isNamespace,
-				localName,
-				isExternal
-			}
-
-			if (isNamespace) {
-				this.namespaceImports.push(localName)
-			}
-		})
-	}
-	//ExportDefaultDeclaration | ExportNamedDeclaration | ExportAllDeclaration
-	addExport(statement: Statement) {		
-		//export default function foo() {}  declaration: FunctionDeclaration
-		//export default foo;    declaration: Identifier
-		//export default 42; declaration: Literal
-		if (statement.node.type == 'ExportDefaultDeclaration') {
-			let exportDefaultDecl = statement.node as ExportDefaultDeclaration;
-			const isDeclaration = /Declaration$/.test(exportDefaultDecl.declaration.type);
-		
-			let identifier = ''
-			let functionDefaultConvert = <FunctionDeclaration>(<ExportDefaultDeclaration>exportDefaultDecl).declaration
-			let identifierDefaulConvert = <Identifier>(<ExportDefaultDeclaration>exportDefaultDecl).declaration;
-			if (functionDefaultConvert.id) {
-				identifier = functionDefaultConvert.id.name
-			} else {
-				identifier = identifierDefaulConvert.name
-			}		
-			
-			
-			const isLiteral = exportDefaultDecl.declaration.type === 'Literal' 
-
-			this.exports['Default'] = {
-				statement,
-				localName: identifier || 'Default',
-				isDeclaration: isDeclaration,
-				identifier,
-				isLiteral,
-			    isExternal:false,
-				exportMode: 'default',
-				isModified: false
-			}
+   //!renamin-b _two应该联系在two上，现在联系上
+	traceVariable(name: string): Variable {		
+		if (name in this.scope.variables) {
+			return this.scope.variables[name]
 		}
-			// export { foo, bar, baz }
-		// export var foo = 42;
-		// export function foo () {}
-		else if (statement.node.type == 'ExportNamedDeclaration') {
-			const exporNamedDecl = statement.node as ExportNamedDeclaration;
-			const exportName = exporNamedDecl.source? exporNamedDecl.source.value as string: ''
-			const isExternal = this.markExternal(exportName)
-					
-			if (exporNamedDecl.specifiers.length) {
-				exporNamedDecl.specifiers.forEach(specifier => {
-					const localName = (specifier.local as Identifier).name;
-					const exportedName = (specifier.exported as Identifier).name;
-					this.exports[exportedName] = {
-						statement,
-						localName,
-						exportSouce:exportName,
-						exportedName,
-						isExternal,
-						exportMode:'named'
-					}
-					if (this.isEntry && !this.imports[localName]) {
-						this.imports[localName] = {
-							importee:exportName,
-								name:localName,
-								isNamespace:false,
-								localName,
-				                isExternal
-						}
-					}
-				})
-			} else {
-				const declaration = exporNamedDecl.declaration
-				let name: string =''
-				if (declaration && declaration.type === 'VariableDeclaration') {
-					//export var foo = 1
-					let identifier = declaration.declarations[0].id as Identifier;
-					name = identifier.name;
-				} else {
 
-					//export function foo() {}
-					name = (declaration as FunctionDeclaration).id.name;
-				}
-
-				this.exports[ name ] = {
-					statement,
-					localName: name,
-					isExternal:false,
-					expression: declaration,
-					exportMode:'named'
-				};
-
-
-			}
-		 }
-
-	}
-    
-	exportToImport(exports: Record<string, any>) {
-		Object.keys(exports).forEach(key => {
-			if (key === 'Default') {
-				
-			} else {
-				const defineKeys = Object.keys(this.definitions)
-				if (!defineKeys.includes(key)) {
-					const { exportSouce,isExternal } = this.exports[key]
-					
-					if (!this.dependencies.includes(exportSouce) && exportSouce) {
-							this.dependencies.push(exportSouce)
-						}
-				}
-			}
-		})
-	}
-	
-	
-    
-	markAllStatement(isEntryModule: boolean) {
-		this.statements.forEach(statement => {
-			if (statement.isImportDeclartion()) {
-				let module = this.getModule(statement.node.source.value)
-				if (module instanceof ExternalModule) {
-					let specifiers = (statement.node as ImportDeclaration).specifiers
-						.map(specifier => specifier.local.name)
-					specifiers.forEach(specifier => this.imports[specifier].isExternal = true)
-				}
-				if (module instanceof Module)  module.markAllStatement(false)
-			} else {
-				statement.mark()
-			}
-		})		
-	}
-
-
-	mark(name: string) {
-		if (this.marked[name]) return
-		this.marked[name] = true	
-		if (this.imports[name]) {
-			const importDeclaration = this.imports[name];
-			const module = this.getModule(importDeclaration.importee!)
-
-			if (importDeclaration.name === 'Default' && module instanceof Module) {
-				module.defaultImports = true
-				module.suggestName(importDeclaration.name, importDeclaration.localName!)
-			} 
-			if (module instanceof Module) module.markExport(importDeclaration.name, name)
+		if (name in this.imports) {
+			const importDeclaration = this.imports[name]
+			const otherModule = importDeclaration.module
+			const declaration = otherModule.traceExport(importDeclaration.name);
+			return declaration;
 		} 
-		else {
-			const statement = name === 'Default' ? this.exports['Default'].statement : this.definitions[name]
-			if (statement) {
-				statement.mark()
-			}
-		}
-
+		
+		return null;
 	}
 
-	markExport(name:string, suggestedName:string) {
-		const exportDecl = module.exports[name]
-		if (exportDecl) {
-			if ( name === 'Default' ) {
-				this.defaultImports = true
-				this.suggestName( 'Default', suggestedName );
-				return exportDecl.statement.mark();
-			}
+	baseName() {
+		const base = basename(this.id);
+		const ext = extname(this.id);
 
-			this.mark( exportDecl.localName );
+		return ext ? base.slice(0, -ext.length) : base
+
+	}
+	
+	getExports() {
+		return Object.keys(this.exports);
+	}
+
+	MarkExports() {
+		for (const exportedName of this.getExports()) {
+			const variable = this.traceVariable(exportedName)
+			variable.exportName = exportedName
+			variable.include()
 		}
 	}
-	// collectDependencies() {
-	// 	let strongDependencies: Record<string, Module> = {};
-	// 	let weakDependencies: Record<string, Module> = {};
-	// 	this.statements.forEach((statement) => {
-	// 		const isImportDecl = statement.isImportDeclartion()
-	// 		const specLength = isImportDecl ? (statement.node as ImportDeclaration).specifiers.length : 0
-	// 		if (isImportDecl && !specLength) {
-	// 			//@ts-ignore
-	// 			const id = this.resolvedIds[ statement.node.source.value ];
-	// 			const module = this.moduleLoader.modulesById[ id ];
-	// 			if(module instanceof Module) strongDependencies[module.id] = module;
-	// 		} else {
-	// 			Object.keys(statement.strongDependsOn).forEach(name => {
-	// 				if (statement.defines[name] || !this.imports[name]) return;
-	// 				//@ts-ignore
-
-	// 				let id = this.resolvedIds[this.imports[name].importee]
-	// 				const module = this.moduleLoader.modulesById[id]
-	// 				if(module instanceof Module) strongDependencies[module.id] = module
-	// 			});
-	// 		}
-	// 	})
-
-	// 	this.statements.forEach(statement => {
-	// 		Object.keys(statement.dependsOn).forEach(name => {
-
-	// 			if (statement.defines[name] || !this.imports[name]) return;
-	// 			//@ts-ignore
-	// 			let id = this.resolvedIds[this.imports[name].importee]
-	// 			const module = this.moduleLoader.modulesById[id]
-	// 			if(module instanceof Module) weakDependencies[module.id] = module
-	// 		});
-	// 	})
-	// 	return { strongDependencies,weakDependencies };
-	// }
+     
+	include() {
+		if (this.ast.shouldBeIncluded()) this.ast.include()
+	}
 
 	rename(name: string, newName: string) {
 		this.replacements[name] = newName
 	}
     
-	render(replacements:Record<string, string>) {
-		let magicString = this.magicCode
-		this.statements.forEach(statement => {
-
-			if (statement.node.type === 'ExportNamedDeclaration') {
-				let exportNamedDeclNode = statement.node as ExportNamedDeclaration;
-				if ( exportNamedDeclNode.specifiers.length ) {
-					magicString.remove( statement.start, statement.next );
-					return;
-				}
-			} 
-			
-			if (statement.node.type === 'ImportDeclaration') {
-				const importSouce = (statement.node as ImportDeclaration).source.value
-				let specifiers = (statement.node as ImportDeclaration).specifiers
-					.map(specifier => specifier.local.name)
-				if (this.imports[specifiers[0]].isExternal) {
-					let isNamespace = specifiers.length == 1 && this.namespaceImports.includes(specifiers[0])
-					let isNamed = this.imports[specifiers[0]].name !== 'Default'  && !this.namespaceImports.includes(specifiers[0]);
-					let isDefault = specifiers.length == 1 && statement.node.specifiers[0].type === 'ImportDefaultSpecifier'
-					const externalModule = this.getModule(importSouce as string) as ExternalModule
-					if (isNamed) {
-						externalModule.add_export_name(specifiers)
-						externalModule.setNeedsName(true)
-					}
-					if (isNamespace) {
-						externalModule.setIsNamespace(isNamespace)
-						externalModule.addNamespaceName(specifiers[0])
-					}
-					if (isDefault) {
-						externalModule.setDefault(isDefault)
-						externalModule.name = specifiers[0]
-					}
-
-				} 
-				magicString.remove(statement.start, statement.end)
-				return;
-			}
-			
-			statement.replaceIdentifiers( magicString, replacements );
-
-			if (statement.isExportDeclartion()) {
-				// remove `export` from `export var foo = 42`
-				//@ts-ignore
-				
-				if (statement.node.type === 'ExportNamedDeclaration' && statement.node.declaration.type === 'VariableDeclaration') {
-					//@ts-ignore
-					magicString.remove(statement.node.start, statement.node.declaration.start);
-				}
-				//@ts-ignore
-			   else if (statement.node.declaration.id) {
-					   //@ts-ignore
-			        magicString.remove(statement.node.start, statement.node.declaration.start);
-				} 
-				else if (statement.node.type === 'ExportDefaultDeclaration') {
-					//export default 40;
-					//import bar from './bar'
-					// var bar = 40;
-					//要把 default =bar
-					let canonicalName = this.getDefaultName();
-				
-					let exporDefaulDecl = (statement.node as ExportDefaultDeclaration).declaration
-						if (exporDefaulDecl.type === 'FunctionDeclaration') {
-						//@ts-ignore
-						magicString.overwrite(statement.start, statement.node.declaration.start + 8, `function ${canonicalName}`);
-						} else if (statement.node.declaration.type === 'Identifier' && canonicalName ===( replacements[statement.node.declaration.name] || statement.node.declaration.name)) {
-							magicString.remove(statement.start, statement.end);
-							return
-						}
-					
-					else {
-							//@ts-ignore
-					magicString.overwrite(statement.start,statement.node.declaration.start, `var ${canonicalName} = `)
-					}
-				}
-			}
-		})
-		magicString.prepend(`//# ${basename(this.id)}\n`)
-		return magicString.trim()
+	render(options: any): MagicString {
+		const magicString = this.magicCode.clone();
+		this.ast.render(magicString, options);
+		return magicString;
 	}
+
 
 	suggestName(name: string, suggestion:string) {
 		
@@ -421,7 +300,7 @@ export class Module {
 
 	getModule(importee: string):Module | ExternalModule{
 		const id = this.resolvedIds[ importee];
-		const module = this.moduleLoader.modulesById[id];
+		const module = this.loader.modulesById[id];
 		  return module
 	}
 
@@ -442,7 +321,34 @@ export class Module {
 	   return this.replacements[name] || name
 	}
 	markExternal(importee: string) {
-		const ExternalModuleNames = this.moduleLoader.externalModules.map(module => module.id)
+		const ExternalModuleNames = this.loader.externalModules.map(module => module.id)
 		return ExternalModuleNames.includes(importee)
+	}
+	//return entryModule export {exportMode, export}
+	resolveEntryExport() {
+		for (const key of Object.keys(this.exports)) {
+			const variable = this.traceExport(key)
+
+			if (key !== 'default') {
+
+				return {
+					 exportMode: 'named',
+					 exported: key,
+					 localed: variable.getName()
+				 }
+
+			 } 
+			 if (key === 'default') {
+				 return {
+					 exportMode: 'default',
+					 exported: key,
+					 localed:variable.getName()
+				}
+			 }
+			
+		}
+
+		return {}
+
 	}
 }

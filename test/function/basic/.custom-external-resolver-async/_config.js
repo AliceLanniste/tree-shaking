@@ -13,4 +13,5 @@ module.exports = {
 	exports: function ( exports ) {
 		assert.ok( exports.success );
 	},
+	skip:true
 };

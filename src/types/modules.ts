@@ -1,3 +1,8 @@
+import ExternalModule from "../ExternalModule";
+import { Module } from "../Module";
+import ImportDefaultSpecifier from "../node/ImportDefaultSpecifier";
+import ImportNamespaceSpecifier from "../node/ImportNamespaceSpecifier";
+import ImportSpecifier from "../node/ImportSpecifier";
 import { Statement } from "../node/Statement";
 
 export interface unresolveId {
@@ -8,12 +13,11 @@ export interface unresolveId {
 }
 
 export interface moduleImport {
-	importee: string,
-	name: string,
-	localName: string,
-	source?: string,
-	isNamespace:boolean,
-	isExternal: boolean
+	source: string;
+	specifier: ImportSpecifier | ImportNamespaceSpecifier | ImportDefaultSpecifier;
+	name: string;
+	module: Module | ExternalModule | null;
+	[name: string]: any;
 }
 
 export interface moduleExport {

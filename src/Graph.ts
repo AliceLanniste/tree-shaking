@@ -9,7 +9,7 @@ export class Graph {
     names: Record<string, any> = {};
     plugins: Plugin[];
     onwarn: WarningHandler;
-    load: (id: string) => Promise<SourceDescription | string | void>;
+    load: (id: string) => Promise<SourceDescription | string>;
     resolveId: (id: string, importer: string | undefined) => Promise<string | boolean | void>;
     constructor(
         private readonly options: rainbowOptions,

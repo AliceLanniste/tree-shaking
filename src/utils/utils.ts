@@ -119,9 +119,33 @@ export function getName ( x:Identifier ) {
 
 
 
-export default function makeLegalIdentifier ( str ) {
+export default function makeLegalIdentifier ( str:string ) {
 	str = str.replace( /[^$_a-zA-Z0-9]/g, '_' );
 	if ( /\d/.test( str[0] ) ) str = `_${str}`;
 
 	return str;
 }
+//export default 
+export function findCodeOutsideComment(source: string,
+    searchStr: string,
+    start:number = 0
+) : number {
+    let commentStart, searchPos;
+    while (true) {
+        commentStart = source.indexOf('/', start);
+        searchPos = source.indexOf(searchStr,start)
+        if (commentStart === -1)  break
+        if (searchPos >= commentStart) {
+            searchPos = -1
+        } else if (searchPos !== -1) break;
+         start = commentStart + 1   
+        if (source.charCodeAt(start) === 42) {
+            start = source.indexOf('*/',start)+2
+        } else if (source.charCodeAt(start) === 47) {
+            start = source.indexOf('\n', start) + 1
+        }
+        
+    }
+    return searchPos;
+}
+/** */

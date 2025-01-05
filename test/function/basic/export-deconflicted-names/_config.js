@@ -5,4 +5,6 @@ module.exports = {
 	exports: function (exports) {
 		assert.equal( exports.bar(), 'bar' );
 	},
+	// solo: true,
+	// show:true
 };

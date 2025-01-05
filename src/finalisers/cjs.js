@@ -1,4 +1,4 @@
-export default function cjs ( bundle, magicString, { exportMode, exportReplacements }, options ) {
+export default function cjs ( bundle, magicString, {  exports, exportReplacements }, options ) {
 	let intro = options.useStrict === false ? `` : `'use strict';\n\n`;
 	let importBlock = ''
 	let needIntrop = false
@@ -13,17 +13,18 @@ export default function cjs ( bundle, magicString, { exportMode, exportReplaceme
 				const defaultStatement = `var ${module.name} = _interopDefault(require('${module.id}')) `
 				importBlock += defaultStatement
 			}
-			if (module.isNamespace) {
-				const namespaceStatement = module.namespaceImport.map(aliasElement => {
-					let namespaceIdentifier = aliasElement
-					return `var ${namespaceIdentifier} = require('${module.id}');`
+			if (module. exportedNamespace) {
+				// const namespaceStatement = module.namespaceImport.map(aliasElement => {
+				// 	let namespaceIdentifier = aliasElement
+				// 	return `var ${namespaceIdentifier} = require('${module.id}');`
 
-				}).join('\n')
+				// }).join('\n')
+			  let namespaceStatement =`var ${module.name || module.id} = require('${module.id}');\n`
 				importBlock += namespaceStatement
 			}
 
-			if (module.needsNamed) {
-				specifiers = specifiers.concat(module.exportNames)
+			if (module.exportedNamed) {
+				specifiers = Object.keys(module.declarations)
                 importBlock += `var { ${specifiers.join(', ')} } = require('${module.id}');\n`
 
 			}
@@ -37,29 +38,25 @@ export default function cjs ( bundle, magicString, { exportMode, exportReplaceme
 		intro += importBlock + '\n\n';
 	}
 	magicString.prepend( intro );
-	
-	const exportBlock = getExportBlock(exportMode,exportReplacements)
+
+
+	const exportBlock = getExportBlock(exports)
+
 	if (exportBlock) magicString.append('\n\n' + exportBlock)
 
 	return magicString;
 }
 
 
-function getExportBlock(exports,exportReplacements) {
-	const exportStatement=	Object.keys(exports).map(key => {
-		let { exportedName, localName, exportMode } = exports[key]
-		const finalName = exportReplacements[localName] || localName
+function getExportBlock(exports = {}) {
+	const { exportMode, exported, localed } = exports
 		if (exportMode === 'default') {
-			return `module.exports = ${exportedName}`	
+			return `module.exports = ${localed}\n`	
 		}
 			if (exportMode === 'named') {
-			return `exports.${exportedName} = ${finalName}`
+			return `exports.${exported} = ${localed}\n`
 
 		   }
-	     }).join('\n')
-	return exportStatement
-	// if (exportMode === 'default') {
-	// 	return
-	// }
+	     }
 	
-}
+	

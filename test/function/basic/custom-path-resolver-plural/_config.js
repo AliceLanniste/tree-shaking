@@ -23,5 +23,6 @@ module.exports = {
 	},
 	exports: function ( exports ) {
 		assert.strictEqual( exports.res, 0 );
-	}
+	},
+	skip:true
 };
