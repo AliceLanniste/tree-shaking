@@ -14,7 +14,5 @@ export class Statement {
         this.type = type;
     }
 
-    analyse() {
-        
-    }
+   
 }
