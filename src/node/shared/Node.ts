@@ -1,7 +1,7 @@
 import MagicString from "magic-string";
 import Variable from "../../variables/Variable";
 import { ASTContext } from "../utils/ASTContext";
-import { getNodeKeys, STORE_KEYS } from "../../utils/util";
+import { getNodeKeys, STORED_KEYS } from "../utils";
 
 interface Span {
     start: number;
@@ -19,7 +19,7 @@ export interface Node {
     span: Span;
     type: string;
     parent: Node | {type?: string};
-    included?: boolean;
+    included: boolean;
     variable?:Variable;
     context: ASTContext;
     include(): void;
@@ -38,11 +38,19 @@ export class NodeBase implements Node {
      
 
     constructor(astNode:GenericNode,parent: Node | {type: string, context: ASTContext}, parentScope: Scope){
-        this.keys = STORE_KEYS[astNode.type] || getNodeKeys(astNode);
+        this.keys = STORED_KEYS[astNode.type] || getNodeKeys(astNode);
         this.parent = parent;
         this.context = parent.context;
         this.span = Object.create(null);
         this.included = false;
+    }
+    
+    initialise() {
+        this.included =false
+    }
+
+    include() {
+        this.included = true;
     }
      shouldBeIncluded(): boolean {
         return this.included;
@@ -52,3 +60,4 @@ export class NodeBase implements Node {
          
      }
 }
+
