@@ -1,4 +1,5 @@
-import { NodeBase, NODETYPE, Node } from "./shared";
+import FunctionDeclaration from "./FunctionDeclaration";
+import { NodeBase, NODETYPE, Node, ExpressionNode } from "./shared";
 
 
 export function isExportDefaultDeclaration(node: Node): node is ExportDefaultDeclaration {
@@ -6,4 +7,5 @@ export function isExportDefaultDeclaration(node: Node): node is ExportDefaultDec
 }
 export default class ExportDefaultDeclaration extends NodeBase { 
     type: NODETYPE.EXPORT_DEFAULT_DECLARATION;
+    declaration: FunctionDeclaration | ExpressionNode;
 }
