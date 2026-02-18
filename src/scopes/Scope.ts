@@ -1,4 +1,6 @@
+import GlobalVariable from "../variables/GlobalVariable";
 import LocalVariable from "../variables/LocalVariable";
+import Variable from "../variables/Variable";
 
 export default class Scope {
    parent: Scope | undefined;
@@ -18,31 +20,6 @@ export default class Scope {
             this.parent.children.push(this)
         }
         this.variables = Object.create(null);
-   }
-
-   addExportDefaultDeclaration(name: string,
-    exportDefaultDeclaration: ExportDefaultDeclaration
-   ): ExportDefaultVariable {
-    this.variables.default = new ExportDefaultVariable(name, exportDefaultDeclaration);
-    return this.variables.default;
-   }
-
-
-   addReturnExpression(expression: ExpressionNode) {
-    this.parent && this.parent.addReturnExpression(expression);
-   }
-
-   addDeclaration(identifier: Identifier): Variable {
-     const name = identifier.name;
-     if (this.variables[name]) {
-        const variable = <LocalVariable>this.variables[name];
-        variable.addDeclaration(identifier)
-     } else {
-        this.variables[name] = new LocalVariable(name,identifier);
-
-     }
-
-     return this.variables[name];
    }
 
    contains( name: string): boolean {
