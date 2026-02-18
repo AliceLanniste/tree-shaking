@@ -2,6 +2,7 @@ import MagicString from "magic-string";
 import Variable from "../../variables/Variable";
 import { ASTContext } from "../utils/ASTContext";
 import { getNodeKeys, STORED_KEYS } from "../utils";
+import { Scope } from "../../scopes";
 
 interface Span {
     start: number;
@@ -13,7 +14,7 @@ export interface GenericNode {
 }
 
 export interface StatementNode extends Node {}
-
+export interface ExpressionNode extends Node {}
 
 export interface Node {
     span: Span;
