@@ -2,7 +2,12 @@ import { parse,
 		Program as AcornProgram } from "acorn";
 import { moduleImport } from "./types";
 import MagicString from "magic-string";
-import {  ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration, Identifier, ImportDeclaration, Program  }from "./node";
+import ExportAllDeclaration  from './node/ExportAllDeclaration';
+import ExportDefaultDeclaration  from './node/ExportDefaultDeclaration';
+import ExportNamedDeclaration from './node/ExportNamedDeclaration';
+import Identifier from './node/Identifier';
+import ImportDeclaration from './node/ImportDeclaration';
+import Program from './node/Program';
 import { ERR_CODE, error } from "./error";
 import { ASTContext } from "./node/utils";
 import Scope from "./scopes/Scope";
@@ -14,6 +19,7 @@ import FunctionDeclaration from "./node/FunctionDeclaration";
 
 export default class Module {
     id:string;
+    isExternal: boolean = false;
     source: string;
     comments:Comment[] =[];
     magicString: MagicString;
@@ -28,10 +34,8 @@ export default class Module {
     scope:Scope;
     constructor(
        id: string,
-       code:string,
     ) {
        this.id = id;
-       this.setSource(code)
     }
 
     setSource(code:string) {
