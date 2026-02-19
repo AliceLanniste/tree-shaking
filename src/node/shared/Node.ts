@@ -32,6 +32,7 @@ export interface Node {
 export class NodeBase implements Node { 
      type: string;
      span: Span;
+     scope: Scope;
      keys: string[];
      context: ASTContext;
      parent: Node | { type?: string; };
@@ -43,9 +44,35 @@ export class NodeBase implements Node {
         this.parent = parent;
         this.context = parent.context;
         this.span = Object.create(null);
+        this.createScope(parentScope);
+        this.parseNodes(astNode);
+        this.initialise();
         this.included = false;
     }
     
+    parseNodes(astNode: GenericNode) { 
+       for (const key of Object.keys(astNode)) {
+        if (this.hasOwnProperty(key)) continue;
+        const value = astNode[key];
+        if(typeof value !== 'object' || value === null){
+            (<GenericNode>this)[key] = value;
+        } else if(Array.isArray(value)) {
+            (<GenericNode>this)[key] = [];
+            for (const child of value) {
+                (<GenericNode>this).push(
+                    child === null ? null : new (this.context.nodeConstructor[child.type])(child, this, this.scope)
+                )
+            }
+
+        } else {
+            new(this.context.nodeConstructor[value.type])(value, this, this.scope)
+        }
+       }
+    }
+    
+    createScope(parentScope: Scope) {
+        this.scope = parentScope;
+    }
     initialise() {
         this.included =false
     }
