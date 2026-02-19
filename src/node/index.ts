@@ -9,17 +9,27 @@ import ImportNamespaceSpecifier from './ImportNamespaceSpecifier';
 import ImportSpecifier from './ImportSpecifier';
 import Identifier from './Identifier';
 import Literal from './Literal';
+import FunctionDeclaration from './FunctionDeclaration';
+import VariableDeclaration from './VariableDeclaration';
+import VariableDeclarator from './VariableDeclarator';
+import { NodeBase } from './shared';
 
-export {
+
+export const nodeConstructors :{
+    [key: string]: typeof NodeBase
+}= {
     Program,
     ExportAllDeclaration,
     ExportDefaultDeclaration,
     ExportNamedDeclaration,
     ExportSpecifier,
+    FunctionDeclaration,
     ImportDeclaration,
     ImportDefaultSpecifier,
     ImportNamespaceSpecifier,
     ImportSpecifier,
     Identifier,
     Literal,
+    VariableDeclaration,
+    VariableDeclarator
 }
