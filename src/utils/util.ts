@@ -33,3 +33,43 @@ function addJsExtensionIfNecessary(file: string):string {
     if(found)  return found;
 
 }
+
+export  function getCodeFrame(source: string, line: number, column: number) {
+    let lines = source.split('\n');
+
+    const frameStart = Math.max(0, line - 3);
+    let frameEnd = Math.min(lines.length, line + 2);
+
+    lines = lines.slice(frameStart, frameEnd);
+
+    while(!/\S/.test(lines[lines.length - 1])) {
+        lines.pop();
+        frameEnd -= 1;
+    }
+
+    const digits = String(frameEnd).length;
+
+    return lines.map((str,i) => {
+        const isErrorLine = frameStart + i + 1 === line;
+
+        let lineNum = String(frameStart + i + 1);
+        while(lineNum.length < digits)  lineNum = ` ${lineNum}`;
+
+        if(isErrorLine) {
+            const indicator = spaces(digits) + tabsToSpaces(str.slice(0, column)).length + '^';
+            return `${lineNum}: ${tabsToSpaces(str)}\n${indicator}}`;
+        }
+
+        return `${lineNum}: ${tabsToSpaces(str)}`;
+    }).join('\n');
+}
+
+function  spaces(i:number) {
+   let result = '';
+   while(i--) result += ' ';
+   return result;
+}
+
+function  tabsToSpaces(str: string) {
+   return str.replace(/^\t+/,match=>match.split('\t').join('  '));
+}
