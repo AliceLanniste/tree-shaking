@@ -54,7 +54,7 @@ export default class Graph {
             return Promise.resolve(<Module>existingModule);
         }
 
-        const module = new Module(id);
+        const module = new Module(id,this);
         this.moduleById.set(id, module);
         //phase2: load module ->source ->transform->ModuleJson->
         let source = load(id);
