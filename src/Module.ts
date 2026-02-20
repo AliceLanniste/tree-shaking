@@ -1,6 +1,6 @@
 import { parse,
 		Program as AcornProgram } from "acorn";
-import { moduleImport } from "./types";
+import { moduleImport, RainbowError, Warning } from "./types";
 import MagicString from "magic-string";
 import ExportAllDeclaration  from './node/ExportAllDeclaration';
 import ExportDefaultDeclaration  from './node/ExportDefaultDeclaration';
@@ -16,8 +16,11 @@ import { NODETYPE } from "./node/shared";
 import ImportSpecifier from "./node/ImportSpecifier";
 import { isExportDefaultDeclaration } from "./node/ExportDefaultDeclaration";
 import FunctionDeclaration from "./node/FunctionDeclaration";
+import { getCodeFrame } from "./utils/util";
+import Graph from "./Graph";
 
 export default class Module {
+    graph: Graph;
     id:string;
     isExternal: boolean = false;
     source: string;
@@ -34,14 +37,16 @@ export default class Module {
     scope:Scope;
     constructor(
        id: string,
+       graph: Graph,
     ) {
        this.id = id;
+       this.graph = graph;
     }
 
     setSource(code:string) {
         this.source = code;
         this.magicString = new MagicString(this.source, {filename: this.id});
-        this.originalAst = this.parse(this.source)
+        this.originalAst = tryParse(this, this.graph.acornParser,this.graph.acornOptions);
         this.astContext = {
             code: this.source,
             magicString: this.magicString,
@@ -59,9 +64,6 @@ export default class Module {
         )
     }
 
-    parse(code:string): AcornProgram {
-        return this._parseAST(code)
-    }
 
     addImport(node: ImportDeclaration) {
         const source = <string>node.source.value;
@@ -152,17 +154,67 @@ export default class Module {
         }
     }
 
-   _parseAST(code:string): AcornProgram {
-       try {
-           return  parse(code, {
-             ecmaVersion: 6,
-             sourceType: "module",
-           })
-       } catch(err:any) {
-         error({
-             code: ERR_CODE.PARSE_ERROR,
-             message: err.message
-         })
-       }
+
+   error(err: RainbowError, pos?: number){
+      if (pos !== undefined){
+          err.pos = pos;
+          let location = locate(this.code, pos,{offsetLine: 1})
+      }
+      err.frame = getCodeFrame(this.source, location.line, location.column)
    }
+
+   private warn(warning: Warning,pos?: number) {
+       if(pos !== undefined) {
+            warning.pos = pos;
+            
+            const {line, column} = locate(this.source, pos,{offsetLine: 1});
+
+            warning.loc = {
+                file: this.id,
+                line: warning.loc.line,
+                column: warning.loc.column
+            }
+
+            warning.frame = getCodeFrame(this.source, line,column)
+       }
+        warning.id = this.id;
+        
+   }
+}
+
+const defaultAcornOptions: acorn.Options = {
+    ecmaVersion: 2019,
+    sourceType: 'module',
+    allowHashBang: true,
+}
+
+function tryParse(module: Module, parser: typeof acorn.Parser, acornOptions: AcornOptions) {
+     try {
+        return  parser.parse(module.code, {
+            ...defaultAcornOptions,
+            ...acornOptions,
+            onComment(block:boolean, text: string, start:number, end:number) => module.comments.push({
+                block,
+                text,
+                start,
+                end
+            })
+        })
+     } catch (error) {
+        let message = error.message.replace(/ \(\d+:\d+\)$/,'');
+        if(module.id.endsWith('.json')) {
+            message += ' (Note that you need rollup-plugin-json to import JSON files)';
+        } else if(!module.id.endsWith('.js')) {
+			message += ' (Note that you need plugins to import files that are not JavaScript)';
+        }
+
+        module.error({
+            
+                code: 'PARSE_ERROR',
+                message,
+            
+        },
+        error.pos
+      );
+     }        
 }
