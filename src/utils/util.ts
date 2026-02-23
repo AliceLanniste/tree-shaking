@@ -7,11 +7,12 @@ export function resolveId(id: string, importer?: string): string | null {
 }
 
 export function load(id: string) {
-    return readFileSync(id, 'utf-8');
-}
-
-export function transform(code: string) {
-    return code;
+    try {
+        const fileContent = readFileSync(id, 'utf-8');
+        return fileContent;
+    } catch (error) {
+        throw error;
+    }
 }
 
 function findFile(file: string): string | void {
