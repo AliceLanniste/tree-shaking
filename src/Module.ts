@@ -1,5 +1,6 @@
 import { parse,
 		Program as AcornProgram } from "acorn";
+import * as acorn from 'acorn';
 import { moduleImport, RainbowError, Warning } from "./types";
 import MagicString from "magic-string";
 import ExportAllDeclaration  from './node/ExportAllDeclaration';
@@ -18,23 +19,31 @@ import { isExportDefaultDeclaration } from "./node/ExportDefaultDeclaration";
 import FunctionDeclaration from "./node/FunctionDeclaration";
 import { getCodeFrame } from "./utils/util";
 import Graph from "./Graph";
+import ExternalModule from "./ExternalModule";
 
 export default class Module {
     graph: Graph;
+    execIndex: number;
     id:string;
     isExternal: boolean = false;
-    source: string;
+    code: string;
+    dependencies: (Module | ExternalModule)[] = [];
     comments:Comment[] =[];
     magicString: MagicString;
     originalAst: AcornProgram;
+    entryPointHash: Uint8Array = new Uint8Array(10);
     ast: Program;
+    resolvedIds:Record<string, string> = {};
     astContext: ASTContext;
-    dependencies: string[] =[];
     exportAllSources:string[] = [];
     exports:Record<string, any> = {};
     reexports:Record<string, any> = {};
     imports:Record<string, moduleImport> = {};
     scope:Scope;
+    isEntryPoint: boolean;
+    //importee file 
+    sources: string[] = [];
+    
     constructor(
        id: string,
        graph: Graph,
@@ -44,11 +53,11 @@ export default class Module {
     }
 
     setSource(code:string) {
-        this.source = code;
-        this.magicString = new MagicString(this.source, {filename: this.id});
+        this.code = code;
+        this.magicString = new MagicString(this.code, {filename: this.id});
         this.originalAst = tryParse(this, this.graph.acornParser,this.graph.acornOptions);
         this.astContext = {
-            code: this.source,
+            code: this.code,
             magicString: this.magicString,
             filename: this.id,
             nodeConstructor: {},
@@ -58,16 +67,16 @@ export default class Module {
             addImport: this.addImport.bind(this),
         }
         this.scope = new GlobalScope({isModuleScope:false});
-        this.ast = new Program(this.originalAst, 
+        this.ast = new Program(
+            this.originalAst, 
             {type:'Module',context: this.astContext},
             this.scope
         )
     }
 
-
     addImport(node: ImportDeclaration) {
         const source = <string>node.source.value;
-        if (!this.dependencies.includes(source)) this.dependencies.push(source);
+        if (!this.sources.includes(source)) this.sources.push(source);
         const specifiers = node.specifiers;
         for(const specifier of specifiers) {
             const localName = specifier.local.name;
@@ -91,7 +100,7 @@ export default class Module {
     addExport(node: ExportAllDeclaration | ExportNamedDeclaration | ExportDefaultDeclaration) {
         const source = (<ExportAllDeclaration>node).source &&<string>(<ExportAllDeclaration>node).source.value;
         if (source) {
-            if (!this.dependencies.includes(source)) this.dependencies.push(source);
+            if (!this.sources.includes(source)) this.sources.push(source);
             if (node.type === NODETYPE.EXPORT_ALL_DECLARATION) {
                 this.exportAllSources.push(source);
             } else {
@@ -154,20 +163,22 @@ export default class Module {
         }
     }
 
+    linkDependencies() { 
+    }
 
    error(err: RainbowError, pos?: number){
       if (pos !== undefined){
           err.pos = pos;
           let location = locate(this.code, pos,{offsetLine: 1})
       }
-      err.frame = getCodeFrame(this.source, location.line, location.column)
+      err.frame = getCodeFrame(this.code, location.line, location.column)
    }
 
    private warn(warning: Warning,pos?: number) {
        if(pos !== undefined) {
             warning.pos = pos;
             
-            const {line, column} = locate(this.source, pos,{offsetLine: 1});
+            const {line, column} = locate(this.code, pos,{offsetLine: 1});
 
             warning.loc = {
                 file: this.id,
@@ -175,10 +186,16 @@ export default class Module {
                 column: warning.loc.column
             }
 
-            warning.frame = getCodeFrame(this.source, line,column)
+            warning.frame = getCodeFrame(this.code, line,column)
        }
         warning.id = this.id;
         
+   }
+
+   render( options: any): MagicString {
+    const magicString = this.magicString.clone();
+     this.ast.render(magicString,options);
+     return magicString;
    }
 }
 
@@ -188,7 +205,7 @@ const defaultAcornOptions: acorn.Options = {
     allowHashBang: true,
 }
 
-function tryParse(module: Module, parser: typeof acorn.Parser, acornOptions: AcornOptions) {
+function tryParse(module: Module, parser: typeof acorn.Parser, acornOptions:  acorn.Options) {
      try {
         return  parser.parse(module.code, {
             ...defaultAcornOptions,
@@ -209,12 +226,13 @@ function tryParse(module: Module, parser: typeof acorn.Parser, acornOptions: Aco
         }
 
         module.error({
-            
                 code: 'PARSE_ERROR',
                 message,
             
         },
         error.pos
       );
-     }        
+     }  
+     
+    
 }

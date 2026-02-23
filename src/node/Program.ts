@@ -1,3 +1,4 @@
+import MagicString from "magic-string";
 import { NodeBase,StatementNode } from "./shared/Node";
 import { NODETYPE } from "./shared/NodeType";
 
@@ -12,5 +13,9 @@ export default class Program extends NodeBase {
             node.include()
         }
     }
+  }
+
+  render(code: MagicString, options: any) {
+    super.render(code, options)
   }
 }

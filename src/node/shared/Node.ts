@@ -85,7 +85,17 @@ export class NodeBase implements Node {
      }
 
      render(code: MagicString, options: any): void {
-         
+        for(const key of this.keys) {
+            const value = (<GenericNode>this)[key];
+            if (value == null) continue;
+            if (Array.isArray(value)) {
+                for (const child of value) {
+                    if (child) child.render(code, options);
+                }
+            } else {
+                value.render(code, options);
+            }
+        }   
      }
 }
 
