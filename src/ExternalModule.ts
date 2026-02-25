@@ -3,6 +3,7 @@ import Graph from "./Graph";
 export default class ExternalModule {
     private graph: Graph;
     id: string;
+    chunk: void;
     isExternal: boolean = true;
     isEntrtyPoint: boolean = false;
     execIndex: number;

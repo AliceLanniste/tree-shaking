@@ -1,7 +1,8 @@
 import { parse,
 		Program as AcornProgram } from "acorn";
 import * as acorn from 'acorn';
-import { moduleImport, RainbowError, Warning } from "./types";
+import { CommentDesc, moduleImport, RainbowError, Warning } from "./types";
+import { locate } from 'locate-character';
 import MagicString from "magic-string";
 import ExportAllDeclaration  from './node/ExportAllDeclaration';
 import ExportDefaultDeclaration  from './node/ExportDefaultDeclaration';
@@ -20,15 +21,17 @@ import FunctionDeclaration from "./node/FunctionDeclaration";
 import { getCodeFrame } from "./utils/util";
 import Graph from "./Graph";
 import ExternalModule from "./ExternalModule";
+import Chunk from "./Chunk";
 
 export default class Module {
     graph: Graph;
+    chunk: Chunk;
     execIndex: number;
     id:string;
     isExternal: boolean = false;
     code: string;
     dependencies: (Module | ExternalModule)[] = [];
-    comments:Comment[] =[];
+    comments: CommentDesc[] =[];
     magicString: MagicString;
     originalAst: AcornProgram;
     entryPointHash: Uint8Array = new Uint8Array(10);
@@ -166,12 +169,16 @@ export default class Module {
     linkDependencies() { 
     }
 
+    bindReferences() { 
+    }
+
    error(err: RainbowError, pos?: number){
       if (pos !== undefined){
           err.pos = pos;
           let location = locate(this.code, pos,{offsetLine: 1})
+        err.frame = getCodeFrame(this.code, location.line, location.column)
+
       }
-      err.frame = getCodeFrame(this.code, location.line, location.column)
    }
 
    private warn(warning: Warning,pos?: number) {
@@ -210,7 +217,7 @@ function tryParse(module: Module, parser: typeof acorn.Parser, acornOptions:  ac
         return  parser.parse(module.code, {
             ...defaultAcornOptions,
             ...acornOptions,
-            onComment(block:boolean, text: string, start:number, end:number) => module.comments.push({
+            onComment:(block:boolean, text: string, start:number, end:number) => module.comments.push({
                 block,
                 text,
                 start,
