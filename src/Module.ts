@@ -1,7 +1,7 @@
 import { parse,
 		Program as AcornProgram } from "acorn";
 import * as acorn from 'acorn';
-import { CommentDesc, moduleImport, RainbowError, Warning } from "./types";
+import { CommentDesc, ExportDescription, ImportDescription, moduleImport, RainbowError, ReexportDescription, Warning } from "./types";
 import { locate } from 'locate-character';
 import MagicString from "magic-string";
 import ExportAllDeclaration  from './node/ExportAllDeclaration';
@@ -36,12 +36,15 @@ export default class Module {
     originalAst: AcornProgram;
     entryPointHash: Uint8Array = new Uint8Array(10);
     ast: Program;
+    imports: { [name: string]: ImportDescription } = Object.create(null);
+    exportsAllModules: (Module | ExternalModule)[] = [];
+    exports: {[name: string] : ExportDescription} = Object.create(null);
+    exportsAllSources: string[] = [];
+    reexports: { [name: string]: ReexportDescription } = Object.create(null);
+    //store relative path: absolute path
     resolvedIds:Record<string, string> = {};
     astContext: ASTContext;
     exportAllSources:string[] = [];
-    exports:Record<string, any> = {};
-    reexports:Record<string, any> = {};
-    imports:Record<string, moduleImport> = {};
     scope:Scope;
     isEntryPoint: boolean;
     //importee file 
@@ -93,84 +96,119 @@ export default class Module {
         
             this.imports[localName] ={
                 source: source,
-                specifier:specifier,
+                start: specifier.start,
                 name: name,
                 module: this
             }
        }
    }
 
+   /**
+    * @params node: ExportNamedDeclaration | ExportDefaultDeclaration | ExportAllDeclaration
+    */
     addExport(node: ExportAllDeclaration | ExportNamedDeclaration | ExportDefaultDeclaration) {
         const source = (<ExportAllDeclaration>node).source &&<string>(<ExportAllDeclaration>node).source.value;
-        if (source) {
+        
+        if(source) {
             if (!this.sources.includes(source)) this.sources.push(source);
+            //export * from 'source'
             if (node.type === NODETYPE.EXPORT_ALL_DECLARATION) {
                 this.exportAllSources.push(source);
             } else {
-                for(const specifier of (<ExportNamedDeclaration>node).specifiers) { 
-                   const name = specifier.exported.name;
-                   if(this.exports[name] || this.reexports[name]) {
-                    error({
-                        code: ERR_CODE.DUPLICATE_EXPORT,
-                        message: `Duplicate export ${name}`
-                    });
-                   }
-                   this.reexports[name] = {};
+                for (const specifier of (<ExportNamedDeclaration>node).specifiers){
+                    const name = specifier.exported.name;
+                    if (this.exports[name] || this.reexports[name]) {
+                        this.error({
+                            code: ERR_CODE.DUPLICATE_EXPORT,
+                            message:`A module have mulitiple exports with the same name (${name})`
+                        },
+                            specifier.start);
+                    }
+
+                    this.reexports[name] = {
+                        localName: specifier.local.name,
+                        module: null,
+                        start: specifier.start,
+                        source: source
+                    }
                 }
+            }
                 
-            }
-        } else if(isExportDefaultDeclaration(node)) {
-            const identifier = ((<FunctionDeclaration>node.declaration).id &&
-                                    (<FunctionDeclaration>node.declaration).id.name) ||
-                                (<Identifier>node.declaration).name;
+        }  else if (isExportDefaultDeclaration(node)) {
+             if (this.exports.default) {
+                this.error({
+                    code: ERR_CODE.DUPLICATE_EXPORT,
+                    message:`A module can only have one default export`
+                },
+                    node.start);
+             }
 
-            if(this.exports.default) {
-                error({
-                    code: ERR_CODE.DUPLICATE_EXPORT_DEFAULT,
-                    message: `Duplicate export default`
-                });
-            }
-
-            this.exports.default = {
-                localName:'default',
-                identifier
-            }
-
-        } else if((<ExportNamedDeclaration>node).declaration) {
-            const declaration =(<ExportNamedDeclaration>node).declaration;
-            if(declaration.type === NODETYPE.VARIABLE_DECLARATION){
-                for(const decl of declaration.declarations) {
-                    const localName = decl.id.name;
-                    this.exports[localName] = {localName};
-                }
-            } else {
-                const localName =declaration.id.name;
-                this.exports[localName] = {localName};
-
+             this.exports.default = {
+                localName: 'default',
+                identifier: null,
+                node: node
+             }
+        } else if ((<ExportNamedDeclaration>node).declaration){
+              const declaration = (<ExportNamedDeclaration>node).declaration;
+                //export var a = 1,var b = 2;
+              if (declaration.type === NODETYPE.VARIABLE_DECLARATION) {
+                    for (const decl of declaration.declarations){
+                        const localName = decl.id.name;
+                        this.exports[localName] = {
+                            localName: localName,
+                            node: node
+                        };
+                    }
+              } else if (declaration.type === NODETYPE.FUNCTION_DECLARATION) { 
+                 const localName = declaration.id.name;
+                 this.exports[localName] = {
+                    localName: localName,
+                    node: node
+                };
             }
         } else {
-            	for (const specifier of (<ExportNamedDeclaration>node).specifiers) {
-                    const localName = specifier.local.name;
-                    const exportedName = specifier.exported.name;
-
-                    if(this.exports[exportedName] || this.reexports[exportedName]){
-                        error({
-                            code: ERR_CODE.DUPLICATE_EXPORT,
-                            message: 'duplicate export'
-                        })
-                    }
-                    this.exports[exportedName] = {localName}
+            //export { a , b }
+            for (const specifier of (<ExportNamedDeclaration>node).specifiers) {
+                const exportedName = specifier.exported.name;
+                const localName = specifier.local.name;
+                if (this.exports[exportedName] || this.reexports[exportedName]){
+                    this.error({
+                        code: ERR_CODE.DUPLICATE_EXPORT,
+                        message:`A module can only have one export with the name (${exportedName})`
+                    },
+                        specifier.start);
                 }
-
-
+                this.exports[exportedName] = {
+                    localName: localName,
+                    node: node
+                };
+            }
         }
     }
 
     linkDependencies() { 
+        for (const source of this.sources) {
+            const  id = this.resolvedIds[source];
+
+            if(id) {
+                const module = this.graph.moduleById.get(id);
+                this.dependencies.push(module);
+            }
+        }
     }
 
     bindReferences() { 
     }
+
+    private addModulesToSpecifiers(specifiers: {
+		[name: string]: ImportDescription | ReexportDescription;
+	}) {
+        for (const name  of Object.keys(specifiers)) {
+            const specifier = specifiers[name];
+            specifier.module = this.graph.moduleById.get(this.resolvedIds[specifier.source]);
+        }
+    }
+
 
    error(err: RainbowError, pos?: number){
       if (pos !== undefined){
@@ -179,6 +217,7 @@ export default class Module {
         err.frame = getCodeFrame(this.code, location.line, location.column)
 
       }
+
    }
 
    private warn(warning: Warning,pos?: number) {
