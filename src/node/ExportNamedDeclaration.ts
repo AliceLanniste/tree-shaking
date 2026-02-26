@@ -1,10 +1,12 @@
+import ClassDeclaration from "./ClassDeclaration";
 import ExportSpecifier from "./ExportSpecifier";
 import FunctionDeclaration from "./FunctionDeclaration";
+import Literal from "./Literal";
 import { NodeBase, NODETYPE } from "./shared";
 import VariableDeclaration from "./VariableDeclaration";
-
 export default class ExportNamedDeclaration extends NodeBase { 
     type: NODETYPE.EXPORT_NAMED_DECLARATION;
-    declaration: FunctionDeclaration | VariableDeclaration | null;
+    declaration: FunctionDeclaration | VariableDeclaration |  ClassDeclaration |null;
     specifiers: ExportSpecifier[];
+    source: Literal<string> | null;
 }

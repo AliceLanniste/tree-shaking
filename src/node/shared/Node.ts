@@ -17,6 +17,7 @@ export interface StatementNode extends Node {}
 export interface ExpressionNode extends Node {}
 
 export interface Node {
+    start: number;
     span: Span;
     type: string;
     parent: Node | {type?: string};
@@ -32,6 +33,7 @@ export interface Node {
 export class NodeBase implements Node { 
      type: string;
      span: Span;
+     start: number;
      scope: Scope;
      keys: string[];
      context: ASTContext;
@@ -99,3 +101,4 @@ export class NodeBase implements Node {
      }
 }
 
+export { NodeBase as StatementBase };

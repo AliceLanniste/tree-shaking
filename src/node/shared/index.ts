@@ -1,2 +1,5 @@
 export * from './Node'
 export * from './NodeType'
+export * from './ClassNode'
+export * from './FunctionNode'
+export * from './Pattern'
