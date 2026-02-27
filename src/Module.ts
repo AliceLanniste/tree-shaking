@@ -1,23 +1,21 @@
-import { parse,
+import { 
 		Program as AcornProgram } from "acorn";
 import * as acorn from 'acorn';
-import { CommentDesc, ExportDescription, ImportDescription, moduleImport, RainbowError, ReexportDescription, Warning } from "./types";
+import { CommentDesc, ExportDescription, ImportDescription, RainbowError, ReexportDescription, Warning } from "./types";
 import { locate } from 'locate-character';
 import MagicString from "magic-string";
-import ExportAllDeclaration  from './node/ExportAllDeclaration';
-import ExportDefaultDeclaration  from './node/ExportDefaultDeclaration';
-import ExportNamedDeclaration from './node/ExportNamedDeclaration';
-import Identifier from './node/Identifier';
-import ImportDeclaration from './node/ImportDeclaration';
-import Program from './node/Program';
+import ExportAllDeclaration  from './ast/node/ExportAllDeclaration';
+import ExportDefaultDeclaration  from './ast/node/ExportDefaultDeclaration';
+import ExportNamedDeclaration from './ast/node/ExportNamedDeclaration';
+import ImportDeclaration from './ast/node/ImportDeclaration';
+import Program from './ast/node/Program';
 import { ERR_CODE, error } from "./error";
-import { ASTContext } from "./node/utils";
-import Scope from "./scopes/Scope";
-import GlobalScope from "./scopes/GlobalScope";
-import { NODETYPE } from "./node/shared";
-import ImportSpecifier from "./node/ImportSpecifier";
-import { isExportDefaultDeclaration } from "./node/ExportDefaultDeclaration";
-import FunctionDeclaration from "./node/FunctionDeclaration";
+import { ASTContext } from "./ast/node/utils";
+import Scope from "./ast/scopes/Scope";
+import GlobalScope from "./ast/scopes/GlobalScope";
+import { NODETYPE } from "./ast/shared";
+import ImportSpecifier from "./ast/node/ImportSpecifier";
+import { isExportDefaultDeclaration } from "./ast/node/ExportDefaultDeclaration";
 import { getCodeFrame } from "./utils/util";
 import Graph from "./Graph";
 import ExternalModule from "./ExternalModule";
@@ -105,8 +103,26 @@ export default class Module {
 
    /**
     * @params node: ExportNamedDeclaration | ExportDefaultDeclaration | ExportAllDeclaration
+    * export语句 有pure-export也有re-export,因此在分析export语句需要对这两种做出区别
+    * re-export语句格式: export {name1, name2} from 'source'，必须是有specifier和source
+    * 
+    * exportAllDeclaration: export * from 'source' ,export * as source from 'source'
+    * 
+    * exportNamedDeclaration: export {name1, name2},  
+    *                         export {name1, name2} from 'source'
+    *                         export function foo() {}
+    *                         export class Foo {}
+    *                         export var a =1,b=2;
+    * 
+    * exportDefaultDeclaration: export default function foo() {}
+    *                           export default class Foo {}
+    *                           export default 1;
+    *                           export default foo;
     */
     addExport(node: ExportAllDeclaration | ExportNamedDeclaration | ExportDefaultDeclaration) {
+        //先判断有没有source，唯一肯定有source的是ExportAllDeclaration，所以先把node转成ExportAllDeclaration
+        //得到soure，然后再去根据node.type分析是ExportAllDeclaration还是有source的ExportNamedDeclaration
+        // 没有source的则可能是exportDefaultDeclaration，exportNamedDeclaration
         const source = (<ExportAllDeclaration>node).source &&<string>(<ExportAllDeclaration>node).source.value;
         
         if(source) {
@@ -115,6 +131,7 @@ export default class Module {
             if (node.type === NODETYPE.EXPORT_ALL_DECLARATION) {
                 this.exportAllSources.push(source);
             } else {
+                //export {name1, name2} from 'source'属于re-export
                 for (const specifier of (<ExportNamedDeclaration>node).specifiers){
                     const name = specifier.exported.name;
                     if (this.exports[name] || this.reexports[name]) {
@@ -135,6 +152,10 @@ export default class Module {
             }
                 
         }  else if (isExportDefaultDeclaration(node)) {
+            //export default function foo() {}
+            //export default class Foo {}
+            //export default foo;
+            //export default 1;
              if (this.exports.default) {
                 this.error({
                     code: ERR_CODE.DUPLICATE_EXPORT,
@@ -145,21 +166,27 @@ export default class Module {
 
              this.exports.default = {
                 localName: 'default',
-                identifier: null,
+                identifier: node.variable.getOriginalVariableName(),
                 node: node
              }
         } else if ((<ExportNamedDeclaration>node).declaration){
-              const declaration = (<ExportNamedDeclaration>node).declaration;
-                //export var a = 1,var b = 2;
-              if (declaration.type === NODETYPE.VARIABLE_DECLARATION) {
-                    for (const decl of declaration.declarations){
-                        const localName = decl.id.name;
-                        this.exports[localName] = {
-                            localName: localName,
-                            node: node
-                        };
-                    }
-              } else if (declaration.type === NODETYPE.FUNCTION_DECLARATION) { 
+            // export var { foo, bar } = ...
+			// export var foo = 42;
+			// export var a = 1, b = 2, c = 3;
+			// export function foo () {}
+            const declaration = (<ExportNamedDeclaration>node).declaration;
+       
+            if (declaration.type === NODETYPE.VARIABLE_DECLARATION) {
+                for (const decl of declaration.declarations){
+                    const localName = decl.id.name;
+                    this.exports[localName] = {
+                        localName: localName,
+                        node: node
+                    };
+                }
+              } else  { 
+                // export function foo () {}
+                // export class foo {}
                  const localName = declaration.id.name;
                  this.exports[localName] = {
                     localName: localName,
